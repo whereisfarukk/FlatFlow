@@ -19,28 +19,41 @@ const Login = () => {
         e.preventDefault();
 
         setIsLoading(true);
-        const response = await fetch("http://localhost:3000/auth/login", {
-            method: "POST",
-            credentials: "include",
-            headers: {
-                "Content-Type": "application/json",
-                // for sending cookies if you're using sessions
-            },
-            body: JSON.stringify({ username: formData.username, password: formData.password }),
-        });
-
-        const data = await response.json();
-        console.log(data);
-        setError("");
         try {
-            const success = true; // simulate login success
-            if (success) {
-                navigate("/dashboard");
+            const res = await fetch("http://localhost:3000/auth/login", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                    // for sending cookies if you're using sessions
+                },
+                body: JSON.stringify({ username: formData.username, password: formData.password }),
+            });
+
+            if (!res.ok) {
+                const errorData = await response.json(); // If your server sends a message
+                console.error("❌ Login failed:", errorData.message || "Unknown error");
+                return;
             }
-        } catch (err) {
-            setError("Login failed. Try again.");
-        } finally {
-            setIsLoading(false);
+            const data = await res.json();
+            console.log(data);
+            localStorage.setItem("isAuthenticated", "true");
+            navigate("/dashboard");
+
+            // setError("");
+            // try {
+            //     const success = true;
+            //     if (success) {
+            //         localStorage.setItem("isAuthenticated", "true");
+            //         navigate("/dashboard");
+            //     }
+            // } catch (err) {
+            //     setError("Login failed. Try again.");
+            // } finally {
+            //     setIsLoading(false);
+            // }
+        } catch (e) {
+            console.error("🚨 Network/server error:", error);
         }
     };
 
