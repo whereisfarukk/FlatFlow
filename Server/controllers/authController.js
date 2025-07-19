@@ -19,7 +19,7 @@ exports.signupPostController = async (req, res, next) => {
   try {
     let hashedPassword = await bcrypt.hash(password, 10);
     let user = new User({
-      username: username,
+      ...req.body,
       password: hashedPassword,
     });
 
@@ -37,6 +37,7 @@ exports.signupPostController = async (req, res, next) => {
 };
 
 exports.loginPostController = async (req, res, next) => {
+  // console.log(req.body);
   passport.authenticate("local", (err, user, info) => {
     if (err) return next(err); // internal server error
 

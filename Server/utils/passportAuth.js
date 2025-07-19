@@ -6,13 +6,13 @@ const User = require("../model/User");
 passport.use(
   new LocalStrategy(
     {
-      usernameField: "username", // map req.body.username
+      usernameField: "apartmentname", // map req.body.username
       passwordField: "password", // map req.body.password
     },
-    async (username, password, done) => {
+    async (apartmentname, password, done) => {
       try {
-        const user = await User.findOne({ username });
-        // console.log(user);
+        const user = await User.findOne({ apartmentNumber: apartmentname });
+        console.log(user);
         // username/email does not exist
         if (!user) {
           return done(null, false, {
