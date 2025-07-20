@@ -1,9 +1,14 @@
 import React, { useState } from "react";
 import { AlertTriangle, Calendar, CheckCircle, Clock, Filter, Plus, Search, PenTool as Tool, User, Wrench, Eye, Edit, Trash2 } from "lucide-react";
+import { Listbox } from "@headlessui/react";
+import { Fragment } from "react";
+
+import { Check, ChevronDown } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import Modal from "../components/ui/Modal";
+
 import { maintenanceRequests, currentUser } from "../data/mockData";
 
 const Maintenance = () => {
@@ -30,26 +35,43 @@ const Maintenance = () => {
         return matchesSearch && matchesStatus && matchesPriority;
     });
 
-    const handleSubmitRequest = (e) => {
+    const handleSubmitRequest = async (e) => {
         e.preventDefault();
-        console.log("New maintenance request:", {
+        const requestData = {
             ...newRequest,
             id: Date.now().toString(),
             status: "pending",
-            submittedBy: currentUser.name,
-            apartmentNumber: currentUser.apartmentNumber,
+            apartmentNumber: "",
             dateSubmitted: new Date().toISOString().split("T")[0],
-        });
+        };
 
-        setNewRequest({
-            title: "",
-            description: "",
-            priority: "medium",
-            location: "",
-            category: "plumbing",
-        });
-        setShowNewRequestModal(false);
-        alert("Maintenance request submitted successfully!");
+        try {
+            const res = await fetch("http://localhost:3000/api/maintenance", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ ...requestData }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || "Failed to submit request");
+            }
+            console.log("✅ Submitted:", data);
+            alert("Maintenance request submitted successfully!");
+            setNewRequest({
+                title: "",
+                description: "",
+                priority: "medium",
+                location: "",
+                category: "plumbing",
+            });
+            setShowNewRequestModal(false);
+        } catch (err) {
+            console.error("❌ Error submitting request:", err.message);
+            alert("Failed to submit maintenance request.");
+        }
     };
 
     const getStatusColor = (status) => {
@@ -338,13 +360,25 @@ const Maintenance = () => {
 
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-                            <select value={newRequest.category} onChange={(e) => setNewRequest({ ...newRequest, category: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
-                                {categories.map((category) => (
-                                    <option key={category} value={category}>
-                                        {getCategoryIcon(category)} {category.charAt(0).toUpperCase() + category.slice(1)}
-                                    </option>
-                                ))}
-                            </select>
+                            <Listbox value={newRequest.category} onChange={(value) => setNewRequest({ ...newRequest, category: value })}>
+                                <div className="relative">
+                                    <Listbox.Button className="relative w-full cursor-default rounded-lg border border-gray-300 bg-white py-3 px-4 text-left shadow-md focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-sm">
+                                        {getCategoryIcon(newRequest.category)} {newRequest.category.charAt(0).toUpperCase() + newRequest.category.slice(1)}
+                                    </Listbox.Button>
+                                    <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 sm:text-sm z-10">
+                                        {categories.map((category) => (
+                                            <Listbox.Option key={category} value={category} className={({ active }) => `relative cursor-default select-none py-2 pl-10 pr-4 ${active ? "bg-orange-100 text-orange-900" : "text-gray-900"}`}>
+                                                {({ selected }) => (
+                                                    <>
+                                                        <span className="absolute left-2 top-2">{getCategoryIcon(category)}</span>
+                                                        <span className={`block truncate ${selected ? "font-medium" : "font-normal"}`}>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
+                                                    </>
+                                                )}
+                                            </Listbox.Option>
+                                        ))}
+                                    </Listbox.Options>
+                                </div>
+                            </Listbox>
                         </div>
                     </div>
 
@@ -362,11 +396,46 @@ const Maintenance = () => {
 
                         <div>
                             <label className="block text-sm font-semibold text-gray-700 mb-2">Priority Level</label>
-                            <select value={newRequest.priority} onChange={(e) => setNewRequest({ ...newRequest, priority: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
-                                <option value="low">Low - Can wait a few days</option>
-                                <option value="medium">Medium - Should be addressed soon</option>
-                                <option value="high">High - Urgent attention needed</option>
-                            </select>
+                            <Listbox value={newRequest.priority} onChange={(value) => setNewRequest({ ...newRequest, priority: value })}>
+                                <div className="relative">
+                                    <Listbox.Button className="relative w-full cursor-default rounded-lg border border-gray-300 bg-white py-3 pl-4 pr-6 text-left shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-sm">
+                                        <span className="flex items-center gap-2">
+                                            {
+                                                {
+                                                    low: "🟢 Low – Can wait a few days",
+                                                    medium: "🟡 Medium – Should be addressed soon",
+                                                    high: "🔴 High – Urgent attention needed",
+                                                }[newRequest.priority]
+                                            }
+                                        </span>
+                                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+                                            <ChevronDown className="h-5 w-5" />
+                                        </span>
+                                    </Listbox.Button>
+
+                                    <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm">
+                                        {[
+                                            { value: "low", label: "Low - Can wait a few days", icon: "🟢" },
+                                            { value: "medium", label: "Medium - Should be addressed soon", icon: "🟡" },
+                                            { value: "high", label: "High - Urgent attention needed", icon: "🔴" },
+                                        ].map((priority) => (
+                                            <Listbox.Option key={priority.value} value={priority.value} as={Fragment}>
+                                                {({ active, selected }) => (
+                                                    <li className={`relative cursor-pointer select-none py-2 pl-10 pr-4 list-none ${active ? "bg-orange-100 text-orange-900" : "text-gray-900"}`}>
+                                                        <span className="absolute left-2">{priority.icon}</span>
+                                                        <span className={`${selected ? "font-medium" : "font-normal"} block truncate`}>{priority.label}</span>
+                                                        {selected && (
+                                                            <span className="absolute inset-y-0 right-3 flex items-center text-orange-500">
+                                                                <Check className="h-5 w-5" />
+                                                            </span>
+                                                        )}
+                                                    </li>
+                                                )}
+                                            </Listbox.Option>
+                                        ))}
+                                    </Listbox.Options>
+                                </div>
+                            </Listbox>
                         </div>
                     </div>
 

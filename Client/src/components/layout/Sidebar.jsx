@@ -1,10 +1,10 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BarChart3, Building2, FileText, Home, MessageSquare, Settings, PenTool as Tool, Users, X, Zap } from "lucide-react";
 
 const Sidebar = ({ isOpen, closeSidebar }) => {
     const location = useLocation();
-
+    const navigate = useNavigate();
     const menuItems = [
         { name: "Dashboard", icon: <Home size={20} />, path: "/" },
         { name: "Announcements", icon: <MessageSquare size={20} />, path: "/announcements" },
@@ -20,7 +20,25 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
     const isActive = (path) => {
         return location.pathname === path;
     };
+    const handleLogout = async () => {
+        try {
+            const res = await fetch("http://localhost:3000/auth/logout", {
+                method: "POST",
+                credentials: "include",
+            });
 
+            if (res.ok) {
+                localStorage.removeItem("isAuthenticated");
+
+                navigate("/login");
+            } else {
+                const data = await res.json();
+                alert("Logout failed: " + data.message);
+            }
+        } catch (error) {
+            alert("Logout error: " + error.message);
+        }
+    };
     return (
         <>
             {/* Mobile sidebar backdrop */}
@@ -66,6 +84,9 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
                             </div>
                         </div>
                     </div>
+                    <button onClick={handleLogout} className="w-full text-left px-3 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-semibold">
+                        Logout
+                    </button>
                 </div>
             </aside>
         </>
