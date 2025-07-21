@@ -14,7 +14,7 @@ const Announcements = () => {
     const [newAnnouncement, setNewAnnouncement] = useState({
         title: "",
         content: "",
-        important: false,
+        isImportant: false,
         targetAudience: "",
     });
     const audience = [
@@ -39,7 +39,6 @@ const Announcements = () => {
 
     const handleSubmitAnnouncement = async (e) => {
         e.preventDefault();
-        // Here you would typically send the data to your backend
         const requestData = {
             ...newAnnouncement,
             date: new Date().toISOString().split("T")[0],
@@ -68,8 +67,6 @@ const Announcements = () => {
         // Reset form and close modal
         setNewAnnouncement({ title: "", content: "", important: false });
         setShowNewAnnouncementModal(false);
-
-        // Show success message (you could add a toast notification here)
     };
 
     return (
@@ -282,11 +279,11 @@ const Announcements = () => {
                         <input
                             type="checkbox"
                             id="important"
-                            checked={newAnnouncement.important}
+                            checked={newAnnouncement.isImportant}
                             onChange={(e) =>
                                 setNewAnnouncement({
                                     ...newAnnouncement,
-                                    important: e.target.checked,
+                                    isImportant: e.target.checked,
                                 })
                             }
                             className="w-4 h-4 text-amber-600 bg-gray-100 border-gray-300 rounded focus:ring-amber-500 focus:ring-2"
