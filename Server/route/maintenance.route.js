@@ -8,6 +8,6 @@ const { maintenancePostController } = require("../controllers/maintenanceControl
 // DELETE /api/maintenance/:id         # Delete maintenance request
 // ```;
 
-router.post("/maintenance", maintenancePostController);
+router.post("/", maintenancePostController);
 
 module.exports = router;
