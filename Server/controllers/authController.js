@@ -3,16 +3,6 @@ const bcrypt = require("bcrypt");
 const passport = require("passport");
 
 exports.signupPostController = async (req, res, next) => {
-    // let errors = validationResult(req).formatWith(errorFormatter);
-    // if (!errors.isEmpty()) {
-    //   return;
-    //   // console.log(errors.mapped());
-    //   // return res.render("pages/auth/signup", {
-    //   //   error: errors.mapped(),
-    //   //   oldInput: req.body,
-    //   // });
-    // }
-
     let { username, password } = req.body;
     console.log(req.body);
 
@@ -58,6 +48,32 @@ exports.loginPostController = async (req, res, next) => {
             });
         });
     })(req, res, next);
+};
+
+// update/change password
+exports.updatePasswordController = async (req, res, next) => {
+    const { current_password, new_password, confirm_new_password } = req.body;
+    if (new_password === confirm_new_password) {
+        try {
+            const user = await User.findById(req.user._id);
+            if (!user) {
+                const error = new Error("User not found");
+                error.status = 400;
+                return next(error);
+            }
+            const hashedPassword = await bcrypt.hash(new_password, 10);
+            user.password = hashedPassword;
+            await user.save();
+            res.status(200).json({
+                success: true,
+                message: "Password updated successfully",
+            });
+        } catch (err) {
+            next(err);
+        }
+    } else {
+        return res.status(400).json({ success: false, message: "New password and confirm password do not match" });
+    }
 };
 
 // route: POST /logout or GET /logout

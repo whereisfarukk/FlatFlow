@@ -32,9 +32,9 @@ const Login = () => {
                 },
                 body: JSON.stringify({ apartmentname: formData.apartmentname, password: formData.password }),
             });
-
+            console.log(res);
             if (!res.ok) {
-                const errorData = await response.json(); // If your server sends a message
+                const errorData = await res.json(); // If your server sends a message
                 console.error("❌ Login failed:", errorData.message || "Unknown error");
                 return;
             }
