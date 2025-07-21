@@ -17,16 +17,61 @@ const Settings = () => {
         security: true,
     });
 
-    const handlePasswordChange = (e) => {
+    const handlePasswordChange = async (e) => {
         e.preventDefault();
-        // Handle password change logic here
-        console.log("Password change requested");
+        if (newPassword === confirmPassword) {
+            try {
+                const res = await fetch("http://localhost:3000/auth/change-password", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword, confirm_new_password: confirmPassword }),
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.message || "Failed to submit request");
+                }
+                console.log("✅ Submitted:", data);
+                setCurrentPassword("");
+                setNewPassword("");
+                setConfirmPassword("");
+                alert("password change successfully!");
+            } catch (err) {
+                console.error("❌ Error submitting request:", err.message);
+                alert(err.message || "Failed to submit  request.");
+            }
+        } else {
+            alert("New password and confirm password do not match");
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+        }
     };
 
-    const handleEmailChange = (e) => {
+    const handleEmailChange = async (e) => {
         e.preventDefault();
-        // Handle email change logic here
-        console.log("Email change requested");
+        try {
+            const res = await fetch("http://localhost:3000/auth/change-email", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ email }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || "Failed to submit request");
+            }
+            console.log("✅ Submitted:", data);
+            setEmail("");
+            alert("Email Updated successfully!");
+        } catch (err) {
+            console.error("❌ Error submitting request:", err.message);
+            alert(err.message || "Failed to submit  request.");
+        }
     };
 
     const handleNotificationChange = (key) => {

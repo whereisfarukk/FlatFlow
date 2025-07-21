@@ -61,6 +61,13 @@ exports.updatePasswordController = async (req, res, next) => {
                 error.status = 400;
                 return next(error);
             }
+
+            // Check if current password matches the hashed password
+            const isMatch = await bcrypt.compare(current_password, user.password);
+            if (!isMatch) {
+                return res.status(401).json({ success: false, message: "Current password is incorrect" });
+            }
+
             const hashedPassword = await bcrypt.hash(new_password, 10);
             user.password = hashedPassword;
             await user.save();
@@ -75,7 +82,27 @@ exports.updatePasswordController = async (req, res, next) => {
         return res.status(400).json({ success: false, message: "New password and confirm password do not match" });
     }
 };
+exports.updateEmailController = async (req, res, next) => {
+    const { email } = req.body;
 
+    try {
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            const error = new Error("User not found");
+            error.status = 400;
+            return next(error);
+        }
+
+        user.email = email;
+        await user.save();
+        res.status(200).json({
+            success: true,
+            message: "Email updated successfully",
+        });
+    } catch (err) {
+        next(err);
+    }
+};
 // route: POST /logout or GET /logout
 exports.logoutController = (req, res) => {
     req.logout((err) => {
