@@ -15,7 +15,13 @@ const Announcements = () => {
         title: "",
         content: "",
         important: false,
+        targetAudience: "",
     });
+    const audience = [
+        { id: "resident", title: "Resident" },
+        { id: "admin", title: "Admin" },
+        { id: "committee", title: "Committee" },
+    ];
 
     const filteredAnnouncements = announcements
         .filter((announcement) => {
@@ -31,22 +37,39 @@ const Announcements = () => {
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         });
 
-    const handleSubmitAnnouncement = (e) => {
+    const handleSubmitAnnouncement = async (e) => {
         e.preventDefault();
         // Here you would typically send the data to your backend
-        console.log("New announcement:", {
+        const requestData = {
             ...newAnnouncement,
             date: new Date().toISOString().split("T")[0],
             postedBy: currentUser.name,
             id: Date.now().toString(),
-        });
-
+        };
+        try {
+            const res = await fetch("http://localhost:3000/api/announcement", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ ...requestData }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.message || "Failed to submit request");
+            }
+            console.log("✅ Submitted:", data);
+            alert("announcement request submitted successfully!");
+        } catch (err) {
+            console.error("❌ Error submitting request:", err.message);
+            alert("Failed to submit  request.");
+        }
         // Reset form and close modal
         setNewAnnouncement({ title: "", content: "", important: false });
         setShowNewAnnouncementModal(false);
 
         // Show success message (you could add a toast notification here)
-        alert("Announcement published successfully!");
     };
 
     return (
@@ -193,7 +216,34 @@ const Announcements = () => {
                             </div>
                         </div>
                     </div>
+                    <fieldset>
+                        <legend className="text-sm/6 font-semibold text-gray-900">Choose your target audience below</legend>
+                        <p className="mt-1 text-sm/6 text-gray-600">Target Audience *</p>
+                        <div className="mt-4 space-y-6 sm:flex sm:items-center sm:space-y-0 sm:space-x-10">
+                            {audience.map((notificationMethod) => (
+                                <div key={notificationMethod.id} className="flex items-center">
+                                    <input
+                                        type="radio"
+                                        id={notificationMethod.id}
+                                        name="notification-method"
+                                        value={notificationMethod.id}
+                                        checked={newAnnouncement.targetAudience === notificationMethod.id}
+                                        onChange={(e) =>
+                                            setNewAnnouncement((prev) => ({
+                                                ...prev,
+                                                targetAudience: e.target.value,
+                                            }))
+                                        }
+                                        className="relative size-4 appearance-none rounded-full border border-gray-300 bg-white before:absolute before:inset-1 before:rounded-full before:bg-white not-checked:before:hidden checked:border-indigo-600 checked:bg-indigo-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:border-gray-300 disabled:bg-gray-100 disabled:before:bg-gray-400 forced-colors:appearance-auto forced-colors:before:hidden"
+                                    />
 
+                                    <label htmlFor={notificationMethod.id} className="ml-3 block text-sm/6 font-medium text-gray-900">
+                                        {notificationMethod.title}
+                                    </label>
+                                </div>
+                            ))}
+                        </div>
+                    </fieldset>
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">Announcement Title *</label>
                         <input
