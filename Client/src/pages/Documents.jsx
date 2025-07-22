@@ -61,8 +61,48 @@ const Documents = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [selectedStatus, setSelectedStatus] = useState("all");
-
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const categories = Array.from(new Set(documents.map((doc) => doc.category)));
+    const [uploadForm, setUploadForm] = useState({
+        title: "",
+        description: "",
+        category: "",
+        file: null,
+    });
+
+    const [file, setFile] = useState(null);
+    const handleUpload = async (selectedFile) => {
+        if (!selectedFile) return;
+
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        try {
+            const res = await fetch("http://localhost:3000/api/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (!res.ok) {
+                throw new Error("Upload failed");
+            }
+
+            const data = await res.json();
+            alert("Uploaded: " + data.link); // there is no link ,that why showing undefined
+        } catch (err) {
+            console.error(err);
+            alert("Upload failed");
+        }
+    };
+    const handleChange = (e) => {
+        // console.log(file);
+        const selected = e.target.files[0];
+        // setFile(e.target.files[0]);
+        if (selected) {
+            setFile(selected);
+            handleUpload(selected);
+        }
+    };
 
     const filteredDocuments = documents.filter((doc) => {
         const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -95,9 +135,15 @@ const Documents = () => {
                             <p className="mt-2 text-blue-100">Access and manage building documentation</p>
                         </div>
                         <div className="mt-4 sm:mt-0 flex space-x-3">
-                            <Button variant="secondary" leftIcon={<Upload size={16} />} className="bg-white text-blue-800 hover:bg-blue-50">
-                                Upload Document
-                            </Button>
+                            {/* <input type="file" accept="application/pdf" onChange={handleChange} /> */}
+                            <div className="mt-4 sm:mt-0 flex space-x-3">
+                                <label className="relative inline-block ">
+                                    <input type="file" accept="application/pdf" onChange={handleChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                    <Button variant="secondary" leftIcon={<Upload size={16} />} className="bg-white text-blue-800 hover:bg-blue-50">
+                                        Upload Document
+                                    </Button>
+                                </label>
+                            </div>
                         </div>
                     </div>
                 </div>
