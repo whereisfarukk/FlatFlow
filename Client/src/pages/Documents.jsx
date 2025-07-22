@@ -1,9 +1,17 @@
 import React, { useState } from "react";
-import { FileText, Search, Upload, FolderOpen, Clock, Download, Eye, Filter, Plus } from "lucide-react";
+import { FileText, Search, Upload, FolderOpen, Clock, Download, Eye, Filter, Plus, Wrench } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, PenTool as Tool, User, Edit, Trash2 } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
+import Modal from "../components/ui/Modal";
+import { Listbox, ListboxOption } from "@headlessui/react";
+import { Check, ChevronDown } from "lucide-react";
+import { Fragment } from "react";
+import { CloudArrowUpIcon } from "@heroicons/react/24/solid";
 
+import { maintenanceRequests, currentUser } from "../data/mockData";
+import { Loader } from "../components/ui/Loader";
 const documents = [
     {
         id: "1",
@@ -56,51 +64,66 @@ const documents = [
         status: "restricted",
     },
 ];
-
+const categories = ["plumbing", "electrical", "hvac", "structural", "appliance", "security", "cleaning", "other"];
 const Documents = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [selectedStatus, setSelectedStatus] = useState("all");
-    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-    const categories = Array.from(new Set(documents.map((doc) => doc.category)));
-    const [uploadForm, setUploadForm] = useState({
+    const [showNewRequestModal, setShowNewRequestModal] = useState(false);
+    const [newRequest, setNewRequest] = useState({
         title: "",
         description: "",
-        category: "",
+        category: "legal",
         file: null,
     });
+    const [isLoading, setIsLoading] = useState(false);
+
+    const categories = ["legal", "financial", "maintenance", "insurance", "certificates", "meeting_minutes"];
 
     const [file, setFile] = useState(null);
-    const handleUpload = async (selectedFile) => {
-        if (!selectedFile) return;
+    const handleSubmitRequest = async (e) => {
+        e.preventDefault(); // Prevent default form submission
+
+        const { title, description, category, file } = newRequest;
+
+        if (!file) {
+            alert("Please select a file.");
+            return;
+        }
+
+        if (!title || !description || !category) {
+            alert("Please fill in all fields.");
+            return;
+        }
 
         const formData = new FormData();
-        formData.append("file", selectedFile);
+        formData.append("file", file);
+        formData.append("title", title);
+        formData.append("description", description);
+        formData.append("category", category);
 
+        console.log(formData);
+        setIsLoading(true);
         try {
             const res = await fetch("http://localhost:3000/api/upload", {
                 method: "POST",
+                credentials: "include",
                 body: formData,
             });
 
-            if (!res.ok) {
-                throw new Error("Upload failed");
-            }
+            if (!res.ok) throw new Error("Upload failed");
 
             const data = await res.json();
-            alert("Uploaded: " + data.link); // there is no link ,that why showing undefined
+            alert("Uploaded: " + data.message);
+
+            // Reset form
+            setNewRequest({ title: "", description: "", category: "legal", file: null });
+            setShowNewRequestModal(false);
         } catch (err) {
             console.error(err);
-            alert("Upload failed");
-        }
-    };
-    const handleChange = (e) => {
-        // console.log(file);
-        const selected = e.target.files[0];
-        // setFile(e.target.files[0]);
-        if (selected) {
-            setFile(selected);
-            handleUpload(selected);
+            alert("Upload failed. Please try again.");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -138,8 +161,8 @@ const Documents = () => {
                             {/* <input type="file" accept="application/pdf" onChange={handleChange} /> */}
                             <div className="mt-4 sm:mt-0 flex space-x-3">
                                 <label className="relative inline-block ">
-                                    <input type="file" accept="application/pdf" onChange={handleChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                    <Button variant="secondary" leftIcon={<Upload size={16} />} className="bg-white text-blue-800 hover:bg-blue-50">
+                                    {/* <input type="file" accept="application/pdf" onChange={handleChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" /> */}
+                                    <Button onClick={() => setShowNewRequestModal(true)} variant="secondary" leftIcon={<Upload size={16} />} className="bg-white text-blue-800 hover:bg-blue-50">
                                         Upload Document
                                     </Button>
                                 </label>
@@ -305,6 +328,94 @@ const Documents = () => {
                     <p className="text-gray-500 mt-2">Try adjusting your search criteria</p>
                 </div>
             )}
+            <Modal isOpen={showNewRequestModal} onClose={() => setShowNewRequestModal(false)} title="Upload New Document" size="lg">
+                {isLoading && (
+                    <div className="absolute inset-0 z-20 bg-white/70 backdrop-blur-sm flex items-center justify-center">
+                        <Loader />
+                    </div>
+                )}
+
+                <form onSubmit={handleSubmitRequest} className="space-y-6">
+                    <div className="grid grid-cols-1  gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2"> Title *</label>
+                            <input
+                                type="text"
+                                required
+                                value={newRequest.title}
+                                onChange={(e) => setNewRequest({ ...newRequest, title: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                placeholder="Brief description of the issue..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Detailed Description *</label>
+                            <textarea
+                                required
+                                rows={4}
+                                value={newRequest.description}
+                                onChange={(e) => setNewRequest({ ...newRequest, description: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+                                placeholder="Please provide detailed information about the issue, when it started, and any other relevant details..."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                            <Listbox value={newRequest.category} onChange={(value) => setNewRequest({ ...newRequest, category: value })}>
+                                <div className="relative">
+                                    <Listbox.Button className="relative w-full cursor-default rounded-lg border border-gray-300 bg-white py-3 px-4 text-left  focus:outline-none focus:ring-2  sm:text-sm">{newRequest.category.charAt(0).toUpperCase() + newRequest.category.slice(1)}</Listbox.Button>
+                                    <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 sm:text-sm z-10">
+                                        {categories.map((category) => (
+                                            <ListboxOption key={category} value={category} className={({ active }) => `relative cursor-default select-none py-2 pl-10 pr-4 ${active ? "bg-orange-100 text-orange-900" : "text-gray-900"}`}>
+                                                {({ selected }) => (
+                                                    <>
+                                                        <span className="absolute left-2 top-2"></span>
+                                                        <span className={`block truncate ${selected ? "font-medium" : "font-normal"}`}>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
+                                                    </>
+                                                )}
+                                            </ListboxOption>
+                                        ))}
+                                    </Listbox.Options>
+                                </div>
+                            </Listbox>
+                        </div>
+                        <div className="mt-2 flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10">
+                            <div className="text-center">
+                                <CloudArrowUpIcon aria-hidden="true" className="mx-auto size-12 text-gray-300" />
+                                <div className="mt-4 flex text-sm/6 text-gray-600">
+                                    <label htmlFor="file-upload" className="relative cursor-pointer rounded-md bg-white font-semibold text-indigo-600   hover:text-indigo-500">
+                                        <span>Click to upload</span>
+                                        <input
+                                            id="file-upload"
+                                            name="file-upload"
+                                            type="file"
+                                            className="sr-only"
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    setNewRequest((prev) => ({ ...prev, file }));
+                                                }
+                                            }}
+                                            accept=".pdf,.doc,.docx,.xlsx,.xls"
+                                        />
+                                    </label>
+                                    <p className="pl-1">or drag and drop</p>
+                                </div>
+                                <p className="text-xs/5 text-gray-600">PDF, DOC, DOCX, XLS, XLSX up to 10MB</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <Button type="button" variant="secondary" onClick={() => setShowNewRequestModal(false)}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" variant="primary" leftIcon={<Plus size={16} />}>
+                            Submit Request
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
         </div>
     );
 };

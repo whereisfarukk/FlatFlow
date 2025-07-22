@@ -1,232 +1,258 @@
 import React, { useState } from "react";
-import { FileText, Search, Upload, FolderOpen, Clock, Download, Eye, Filter, Plus } from "lucide-react";
+import { AlertTriangle, Calendar, CheckCircle, Clock, Filter, Plus, Search, PenTool as Tool, User, Wrench, Eye, Edit, Trash2 } from "lucide-react";
+import { Listbox } from "@headlessui/react";
+import { Fragment } from "react";
+
+import { Check, ChevronDown } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
+import Modal from "../components/ui/Modal";
 
-const documents = [
-    {
-        id: "1",
-        title: "Building Bylaws 2025",
-        category: "Legal",
-        uploadedBy: "Building Manager",
-        uploadDate: "2025-01-15",
-        size: "2.4 MB",
-        type: "PDF",
-        status: "public",
-    },
-    {
-        id: "2",
-        title: "Fire Safety Certificate",
-        category: "Certificates",
-        uploadedBy: "Safety Officer",
-        uploadDate: "2025-02-01",
-        size: "1.8 MB",
-        type: "PDF",
-        status: "public",
-    },
-    {
-        id: "3",
-        title: "Monthly Expense Report - February",
-        category: "Financial",
-        uploadedBy: "Treasurer",
-        uploadDate: "2025-03-01",
-        size: "856 KB",
-        type: "XLSX",
-        status: "restricted",
-    },
-    {
-        id: "4",
-        title: "Maintenance Contract 2025",
-        category: "Contracts",
-        uploadedBy: "Committee Secretary",
-        uploadDate: "2025-01-10",
-        size: "3.2 MB",
-        type: "PDF",
-        status: "private",
-    },
-    {
-        id: "5",
-        title: "Resident Directory",
-        category: "General",
-        uploadedBy: "Building Manager",
-        uploadDate: "2025-02-15",
-        size: "1.1 MB",
-        type: "PDF",
-        status: "restricted",
-    },
-];
+import { maintenanceRequests, currentUser } from "../data/mockData";
 
-const Documents = () => {
+const Maintenance = () => {
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState("all");
     const [selectedStatus, setSelectedStatus] = useState("all");
+    const [selectedPriority, setSelectedPriority] = useState("all");
+    const [showNewRequestModal, setShowNewRequestModal] = useState(false);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [selectedRequest, setSelectedRequest] = useState(null);
+    const [newRequest, setNewRequest] = useState({
+        title: "",
+        description: "",
+        priority: "medium",
+        location: "",
+        category: "plumbing",
+    });
 
-    const categories = Array.from(new Set(documents.map((doc) => doc.category)));
+    const categories = ["plumbing", "electrical", "hvac", "structural", "appliance", "security", "cleaning", "other"];
 
-    const [file, setFile] = useState(null);
-    const handleUpload = async (selectedFile) => {
-        if (!selectedFile) return;
+    const filteredRequests = maintenanceRequests.filter((request) => {
+        const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) || request.description.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesStatus = selectedStatus === "all" || request.status === selectedStatus;
+        const matchesPriority = selectedPriority === "all" || request.priority === selectedPriority;
+        return matchesSearch && matchesStatus && matchesPriority;
+    });
 
-        const formData = new FormData();
-        formData.append("file", selectedFile);
+    const handleSubmitRequest = async (e) => {
+        e.preventDefault();
+        const requestData = {
+            ...newRequest,
+            id: Date.now().toString(),
+            status: "pending",
+            apartmentNumber: "",
+            dateSubmitted: new Date().toISOString().split("T")[0],
+        };
 
         try {
-            const res = await fetch("http://localhost:3000/api/upload", {
+            const res = await fetch("http://localhost:3000/api/maintenance", {
                 method: "POST",
-                body: formData,
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ ...requestData }),
             });
-
-            if (!res.ok) {
-                throw new Error("Upload failed");
-            }
-
             const data = await res.json();
-            alert("Uploaded: " + data.link); // there is no link ,that why showing undefined
+            if (!res.ok) {
+                throw new Error(data.message || "Failed to submit request");
+            }
+            console.log("✅ Submitted:", data);
+            alert("Maintenance request submitted successfully!");
+            setNewRequest({
+                title: "",
+                description: "",
+                priority: "medium",
+                location: "",
+                category: "plumbing",
+            });
+            setShowNewRequestModal(false);
         } catch (err) {
-            console.error(err);
-            alert("Upload failed");
+            console.error("❌ Error submitting request:", err.message);
+            alert("Failed to submit maintenance request.");
         }
     };
-    const handleChange = (e) => {
-        // console.log(file);
-        const selected = e.target.files[0];
-        // setFile(e.target.files[0]);
-        if (selected) {
-            setFile(selected);
-            handleUpload(selected);
-        }
-    };
-
-    const filteredDocuments = documents.filter((doc) => {
-        const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCategory = selectedCategory === "all" || doc.category === selectedCategory;
-        const matchesStatus = selectedStatus === "all" || doc.status === selectedStatus;
-        return matchesSearch && matchesCategory && matchesStatus;
-    });
 
     const getStatusColor = (status) => {
         switch (status) {
-            case "public":
-                return "success";
-            case "private":
-                return "danger";
-            case "restricted":
+            case "pending":
                 return "warning";
+            case "in-progress":
+                return "info";
+            case "resolved":
+                return "success";
             default:
-                return "default";
+                return "secondary";
         }
+    };
+
+    const getPriorityColor = (priority) => {
+        switch (priority) {
+            case "high":
+                return "danger";
+            case "medium":
+                return "warning";
+            case "low":
+                return "info";
+            default:
+                return "secondary";
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case "pending":
+                return <Clock size={16} />;
+            case "in-progress":
+                return <Tool size={16} />;
+            case "resolved":
+                return <CheckCircle size={16} />;
+            default:
+                return <AlertTriangle size={16} />;
+        }
+    };
+
+    const getCategoryIcon = (category) => {
+        switch (category) {
+            case "plumbing":
+                return "🔧";
+            case "electrical":
+                return "⚡";
+            case "hvac":
+                return "❄️";
+            case "structural":
+                return "🏗️";
+            case "appliance":
+                return "📱";
+            case "security":
+                return "🔒";
+            case "cleaning":
+                return "🧹";
+            default:
+                return "🔨";
+        }
+    };
+
+    const stats = {
+        total: maintenanceRequests.length,
+        pending: maintenanceRequests.filter((r) => r.status === "pending").length,
+        inProgress: maintenanceRequests.filter((r) => r.status === "in-progress").length,
+        resolved: maintenanceRequests.filter((r) => r.status === "resolved").length,
+        highPriority: maintenanceRequests.filter((r) => r.priority === "high").length,
     };
 
     return (
         <div className="space-y-6">
-            {/* Header Section */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-800 -mx-8 px-8 py-8 mb-8">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-orange-600 to-red-600 -mx-8 px-8 py-8 mb-8">
                 <div className="max-w-7xl mx-auto">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-white">
-                            <h1 className="text-3xl font-bold">Documents</h1>
-                            <p className="mt-2 text-blue-100">Access and manage building documentation</p>
+                            <h1 className="text-3xl font-bold">Maintenance Requests</h1>
+                            <p className="mt-2 text-orange-100">Track and manage building maintenance issues</p>
                         </div>
-                        <div className="mt-4 sm:mt-0 flex space-x-3">
-                            {/* <input type="file" accept="application/pdf" onChange={handleChange} /> */}
-                            <div className="mt-4 sm:mt-0 flex space-x-3">
-                                <label className="relative inline-block ">
-                                    <input type="file" accept="application/pdf" onChange={handleChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                    <Button variant="secondary" leftIcon={<Upload size={16} />} className="bg-white text-blue-800 hover:bg-blue-50">
-                                        Upload Document
-                                    </Button>
-                                </label>
-                            </div>
+                        <div className="mt-4 sm:mt-0">
+                            <Button variant="secondary" leftIcon={<Plus size={16} />} className="bg-white text-orange-800 hover:bg-orange-50" onClick={() => setShowNewRequestModal(true)}>
+                                New Request
+                            </Button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="bg-white">
+            {/* Stats Overview */}
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
+                <Card className="bg-gradient-to-br from-blue-500 to-blue-700 text-white">
                     <div className="flex items-center">
-                        <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                            <FileText size={24} />
+                        <div className="p-3 rounded-full bg-blue-600 bg-opacity-30">
+                            <Wrench size={24} />
                         </div>
-                        <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-500">Total Documents</p>
-                            <p className="text-xl font-semibold text-gray-900">{documents.length}</p>
+                        <div className="ml-5">
+                            <p className="text-sm font-medium text-blue-100">Total Requests</p>
+                            <p className="text-2xl font-bold">{stats.total}</p>
                         </div>
                     </div>
                 </Card>
 
-                <Card className="bg-white">
+                <Card className="bg-gradient-to-br from-amber-500 to-amber-700 text-white">
                     <div className="flex items-center">
-                        <div className="p-3 rounded-full bg-green-100 text-green-600">
-                            <Eye size={24} />
-                        </div>
-                        <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-500">Public Documents</p>
-                            <p className="text-xl font-semibold text-gray-900">{documents.filter((doc) => doc.status === "public").length}</p>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="bg-white">
-                    <div className="flex items-center">
-                        <div className="p-3 rounded-full bg-amber-100 text-amber-600">
-                            <FolderOpen size={24} />
-                        </div>
-                        <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-500">Categories</p>
-                            <p className="text-xl font-semibold text-gray-900">{categories.length}</p>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="bg-white">
-                    <div className="flex items-center">
-                        <div className="p-3 rounded-full bg-purple-100 text-purple-600">
+                        <div className="p-3 rounded-full bg-amber-600 bg-opacity-30">
                             <Clock size={24} />
                         </div>
-                        <div className="ml-4">
-                            <p className="text-sm font-medium text-gray-500">Recent Uploads</p>
-                            <p className="text-xl font-semibold text-gray-900">
-                                {
-                                    documents.filter((doc) => {
-                                        const thirtyDaysAgo = new Date();
-                                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                                        return new Date(doc.uploadDate) > thirtyDaysAgo;
-                                    }).length
-                                }
-                            </p>
+                        <div className="ml-5">
+                            <p className="text-sm font-medium text-amber-100">Pending</p>
+                            <p className="text-2xl font-bold">{stats.pending}</p>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                    <div className="flex items-center">
+                        <div className="p-3 rounded-full bg-blue-600 bg-opacity-30">
+                            <Tool size={24} />
+                        </div>
+                        <div className="ml-5">
+                            <p className="text-sm font-medium text-blue-100">In Progress</p>
+                            <p className="text-2xl font-bold">{stats.inProgress}</p>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-green-500 to-green-700 text-white">
+                    <div className="flex items-center">
+                        <div className="p-3 rounded-full bg-green-600 bg-opacity-30">
+                            <CheckCircle size={24} />
+                        </div>
+                        <div className="ml-5">
+                            <p className="text-sm font-medium text-green-100">Resolved</p>
+                            <p className="text-2xl font-bold">{stats.resolved}</p>
+                        </div>
+                    </div>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-red-500 to-red-700 text-white">
+                    <div className="flex items-center">
+                        <div className="p-3 rounded-full bg-red-600 bg-opacity-30">
+                            <AlertTriangle size={24} />
+                        </div>
+                        <div className="ml-5">
+                            <p className="text-sm font-medium text-red-100">High Priority</p>
+                            <p className="text-2xl font-bold">{stats.highPriority}</p>
                         </div>
                     </div>
                 </Card>
             </div>
 
-            {/* Search and Filters */}
+            {/* Filters */}
             <Card>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="relative flex-1">
+                    <div className="relative flex-1 max-w-md">
                         <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                             <Search size={16} className="text-gray-400" />
                         </span>
-                        <input type="text" className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5" placeholder="Search documents..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                        <input
+                            type="text"
+                            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block w-full pl-10 p-2.5"
+                            placeholder="Search maintenance requests..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
                     </div>
 
                     <div className="flex flex-col sm:flex-row gap-2">
-                        <select className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-                            <option value="all">All Categories</option>
-                            {categories.map((category) => (
-                                <option key={category} value={category}>
-                                    {category}
-                                </option>
-                            ))}
+                        <select className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block p-2.5" value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}>
+                            <option value="all">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
                         </select>
 
-                        <select className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5" value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}>
-                            <option value="all">All Status</option>
-                            <option value="public">Public</option>
-                            <option value="private">Private</option>
-                            <option value="restricted">Restricted</option>
+                        <select className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-orange-500 focus:border-orange-500 block p-2.5" value={selectedPriority} onChange={(e) => setSelectedPriority(e.target.value)}>
+                            <option value="all">All Priority</option>
+                            <option value="high">High Priority</option>
+                            <option value="medium">Medium Priority</option>
+                            <option value="low">Low Priority</option>
                         </select>
 
                         <Button variant="secondary" leftIcon={<Filter size={16} />}>
@@ -236,71 +262,312 @@ const Documents = () => {
                 </div>
             </Card>
 
-            {/* Documents Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredDocuments.map((doc) => (
-                    <Card key={doc.id} className="group hover:shadow-lg transition-all duration-300">
-                        <div className="flex items-start space-x-4">
-                            <div className="p-3 rounded-lg bg-blue-50 text-blue-600">
-                                <FileText size={24} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-lg font-semibold text-gray-900 truncate">{doc.title}</h3>
-                                <div className="flex items-center mt-2 space-x-2">
-                                    <Badge variant="secondary">{doc.category}</Badge>
-                                    <Badge variant={getStatusColor(doc.status)}>{doc.status}</Badge>
-                                </div>
-                                <div className="mt-4 text-sm text-gray-500 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span>Size:</span>
-                                        <span className="font-medium">{doc.size}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Type:</span>
-                                        <span className="font-medium">{doc.type}</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Uploaded:</span>
-                                        <span className="font-medium">{new Date(doc.uploadDate).toLocaleDateString()}</span>
+            {/* Maintenance Requests List */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredRequests.map((request) => (
+                    <Card
+                        key={request.id}
+                        className="group hover:shadow-xl transition-all duration-300 cursor-pointer"
+                        onClick={() => {
+                            setSelectedRequest(request);
+                            setShowDetailsModal(true);
+                        }}
+                    >
+                        <div className="space-y-4">
+                            {/* Header */}
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className="text-2xl">{getCategoryIcon(request.category || "other")}</div>
+                                    <div>
+                                        <h3 className="font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">{request.title}</h3>
+                                        <p className="text-sm text-gray-500">#{request.apartmentNumber}</p>
                                     </div>
                                 </div>
+                                <div className="flex items-center space-x-2">
+                                    <Badge variant={getPriorityColor(request.priority)}>{request.priority}</Badge>
+                                </div>
                             </div>
-                        </div>
-                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between">
-                            <span className="text-sm text-gray-500">{doc.uploadedBy}</span>
-                            <div className="flex space-x-2">
-                                <Button variant="ghost" size="sm" leftIcon={<Eye size={16} />}>
-                                    View
-                                </Button>
-                                <Button variant="ghost" size="sm" leftIcon={<Download size={16} />}>
-                                    Download
-                                </Button>
+
+                            {/* Description */}
+                            <p className="text-sm text-gray-600 line-clamp-2">{request.description}</p>
+
+                            {/* Status and Date */}
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                    <Badge variant={getStatusColor(request.status)} className="flex items-center space-x-1">
+                                        {getStatusIcon(request.status)}
+                                        <span className="capitalize">{request.status.replace("-", " ")}</span>
+                                    </Badge>
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                    <div className="flex items-center space-x-1">
+                                        <Calendar size={12} />
+                                        <span>{new Date(request.dateSubmitted).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                                <div className="flex items-center space-x-1 text-xs text-gray-500">
+                                    <User size={12} />
+                                    <span>{request.submittedBy}</span>
+                                </div>
+                                {request.assignedTo && <div className="text-xs text-gray-500">Assigned to: {request.assignedTo}</div>}
                             </div>
                         </div>
                     </Card>
                 ))}
-
-                {/* Add New Document Card */}
-                <Card className="flex items-center justify-center h-full border-2 border-dashed border-gray-300 hover:border-blue-500 transition-colors duration-200 cursor-pointer group">
-                    <div className="text-center">
-                        <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-100 transition-colors duration-200">
-                            <Plus size={24} className="text-blue-600" />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900">Upload New Document</h3>
-                        <p className="mt-1 text-sm text-gray-500">Click to upload or drag and drop</p>
-                    </div>
-                </Card>
             </div>
 
-            {filteredDocuments.length === 0 && (
+            {filteredRequests.length === 0 && (
                 <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-                    <FileText size={48} className="mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">No documents found</h3>
-                    <p className="text-gray-500 mt-2">Try adjusting your search criteria</p>
+                    <Wrench size={48} className="mx-auto text-gray-400 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900">No maintenance requests found</h3>
+                    <p className="text-gray-500 mt-2">Try adjusting your search or filter criteria</p>
                 </div>
             )}
+
+            {/* New Request Modal */}
+            <Modal isOpen={showNewRequestModal} onClose={() => setShowNewRequestModal(false)} title="Submit New Maintenance Request" size="lg">
+                <form onSubmit={handleSubmitRequest} className="space-y-6">
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 p-4 rounded-lg border border-orange-200">
+                        <div className="flex items-center">
+                            <div className="p-2 bg-orange-100 rounded-full mr-3">
+                                <Wrench className="w-5 h-5 text-orange-600" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-semibold text-orange-900">Maintenance Request</h4>
+                                <p className="text-xs text-orange-700">
+                                    Apartment #{currentUser.apartmentNumber} - {currentUser.name}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Issue Title *</label>
+                            <input
+                                type="text"
+                                required
+                                value={newRequest.title}
+                                onChange={(e) => setNewRequest({ ...newRequest, title: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                placeholder="Brief description of the issue..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                            <Listbox value={newRequest.category} onChange={(value) => setNewRequest({ ...newRequest, category: value })}>
+                                <div className="relative">
+                                    <Listbox.Button className="relative w-full cursor-default rounded-lg border border-gray-300 bg-white py-3 px-4 text-left shadow-md focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-sm">
+                                        {getCategoryIcon(newRequest.category)} {newRequest.category.charAt(0).toUpperCase() + newRequest.category.slice(1)}
+                                    </Listbox.Button>
+                                    <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black/5 sm:text-sm z-10">
+                                        {categories.map((category) => (
+                                            <Listbox.Option key={category} value={category} className={({ active }) => `relative cursor-default select-none py-2 pl-10 pr-4 ${active ? "bg-orange-100 text-orange-900" : "text-gray-900"}`}>
+                                                {({ selected }) => (
+                                                    <>
+                                                        <span className="absolute left-2 top-2">{getCategoryIcon(category)}</span>
+                                                        <span className={`block truncate ${selected ? "font-medium" : "font-normal"}`}>{category.charAt(0).toUpperCase() + category.slice(1)}</span>
+                                                    </>
+                                                )}
+                                            </Listbox.Option>
+                                        ))}
+                                    </Listbox.Options>
+                                </div>
+                            </Listbox>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Location/Area</label>
+                            <input
+                                type="text"
+                                value={newRequest.location}
+                                onChange={(e) => setNewRequest({ ...newRequest, location: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                placeholder="e.g., Kitchen, Bathroom, Living Room..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Priority Level</label>
+                            <Listbox value={newRequest.priority} onChange={(value) => setNewRequest({ ...newRequest, priority: value })}>
+                                <div className="relative">
+                                    <Listbox.Button className="relative w-full cursor-default rounded-lg border border-gray-300 bg-white py-3 pl-4 pr-6 text-left shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-sm">
+                                        <span className="flex items-center gap-2">
+                                            {
+                                                {
+                                                    low: "🟢 Low – Can wait a few days",
+                                                    medium: "🟡 Medium – Should be addressed soon",
+                                                    high: "🔴 High – Urgent attention needed",
+                                                }[newRequest.priority]
+                                            }
+                                        </span>
+                                        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
+                                            <ChevronDown className="h-5 w-5" />
+                                        </span>
+                                    </Listbox.Button>
+
+                                    <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 text-base shadow-lg ring-1 ring-black/5 focus:outline-none sm:text-sm">
+                                        {[
+                                            { value: "low", label: "Low - Can wait a few days", icon: "🟢" },
+                                            { value: "medium", label: "Medium - Should be addressed soon", icon: "🟡" },
+                                            { value: "high", label: "High - Urgent attention needed", icon: "🔴" },
+                                        ].map((priority) => (
+                                            <Listbox.Option key={priority.value} value={priority.value} as={Fragment}>
+                                                {({ active, selected }) => (
+                                                    <li className={`relative cursor-pointer select-none py-2 pl-10 pr-4 list-none ${active ? "bg-orange-100 text-orange-900" : "text-gray-900"}`}>
+                                                        <span className="absolute left-2">{priority.icon}</span>
+                                                        <span className={`${selected ? "font-medium" : "font-normal"} block truncate`}>{priority.label}</span>
+                                                        {selected && (
+                                                            <span className="absolute inset-y-0 right-3 flex items-center text-orange-500">
+                                                                <Check className="h-5 w-5" />
+                                                            </span>
+                                                        )}
+                                                    </li>
+                                                )}
+                                            </Listbox.Option>
+                                        ))}
+                                    </Listbox.Options>
+                                </div>
+                            </Listbox>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Detailed Description *</label>
+                        <textarea
+                            required
+                            rows={4}
+                            value={newRequest.description}
+                            onChange={(e) => setNewRequest({ ...newRequest, description: e.target.value })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+                            placeholder="Please provide detailed information about the issue, when it started, and any other relevant details..."
+                        />
+                    </div>
+
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <Button type="button" variant="secondary" onClick={() => setShowNewRequestModal(false)}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" variant="primary" leftIcon={<Plus size={16} />}>
+                            Submit Request
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Request Details Modal */}
+            <Modal isOpen={showDetailsModal} onClose={() => setShowDetailsModal(false)} title="Maintenance Request Details" size="lg">
+                {selectedRequest && (
+                    <div className="space-y-6">
+                        <div className="bg-gradient-to-r from-gray-50 to-gray-100 p-4 rounded-lg border">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                    <div className="text-3xl">{getCategoryIcon(selectedRequest.category || "other")}</div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900">{selectedRequest.title}</h3>
+                                        <p className="text-gray-600">Apartment #{selectedRequest.apartmentNumber}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Badge variant={getPriorityColor(selectedRequest.priority)}>{selectedRequest.priority} Priority</Badge>
+                                    <Badge variant={getStatusColor(selectedRequest.status)} className="flex items-center space-x-1">
+                                        {getStatusIcon(selectedRequest.status)}
+                                        <span className="capitalize">{selectedRequest.status.replace("-", " ")}</span>
+                                    </Badge>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 className="font-semibold text-gray-900 mb-2">Request Details</h4>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Submitted by:</span>
+                                        <span className="font-medium">{selectedRequest.submittedBy}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-500">Date submitted:</span>
+                                        <span className="font-medium">{new Date(selectedRequest.dateSubmitted).toLocaleDateString()}</span>
+                                    </div>
+                                    {selectedRequest.assignedTo && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Assigned to:</span>
+                                            <span className="font-medium">{selectedRequest.assignedTo}</span>
+                                        </div>
+                                    )}
+                                    {selectedRequest.dateResolved && (
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500">Date resolved:</span>
+                                            <span className="font-medium">{new Date(selectedRequest.dateResolved).toLocaleDateString()}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 className="font-semibold text-gray-900 mb-2">Status Timeline</h4>
+                                <div className="space-y-2">
+                                    <div className="flex items-center space-x-2 text-sm">
+                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                        <span>Request submitted</span>
+                                    </div>
+                                    {selectedRequest.status !== "pending" && (
+                                        <div className="flex items-center space-x-2 text-sm">
+                                            <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                            <span>In progress</span>
+                                        </div>
+                                    )}
+                                    {selectedRequest.status === "resolved" && (
+                                        <div className="flex items-center space-x-2 text-sm">
+                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                            <span>Resolved</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 className="font-semibold text-gray-900 mb-2">Description</h4>
+                            <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">{selectedRequest.description}</p>
+                        </div>
+
+                        {selectedRequest.comments && selectedRequest.comments.length > 0 && (
+                            <div>
+                                <h4 className="font-semibold text-gray-900 mb-2">Comments</h4>
+                                <div className="space-y-2">
+                                    {selectedRequest.comments.map((comment, index) => (
+                                        <div key={index} className="bg-blue-50 p-3 rounded-lg">
+                                            <p className="text-sm text-gray-700">{comment}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {currentUser.role === "admin" && (
+                            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                                <Button variant="secondary" leftIcon={<Edit size={16} />}>
+                                    Update Status
+                                </Button>
+                                <Button variant="danger" leftIcon={<Trash2 size={16} />}>
+                                    Delete Request
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 };
 
-export default Documents;
+export default Maintenance;
