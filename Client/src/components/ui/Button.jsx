@@ -1,7 +1,7 @@
 import React from "react";
 
 const Button = ({ children, variant = "primary", size = "md", isLoading = false, leftIcon, rightIcon, className = "", disabled, ...props }) => {
-    const baseStyles = "inline-flex items-center justify-center font-medium rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2";
+    const baseStyles = "inline-flex items-center justify-center font-medium rounded-md transition-colors duration-200 focus:outline-none ";
 
     const variantStyles = {
         primary: "bg-blue-800 hover:bg-blue-900 text-white focus:ring-blue-600",

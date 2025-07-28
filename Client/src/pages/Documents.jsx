@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FileText, Search, Upload, FolderOpen, Clock, Download, Eye, Filter, Plus, Wrench } from "lucide-react";
 import { AlertTriangle, Calendar, CheckCircle, PenTool as Tool, User, Edit, Trash2 } from "lucide-react";
 import Card from "../components/ui/Card";
@@ -12,58 +12,58 @@ import { CloudArrowUpIcon } from "@heroicons/react/24/solid";
 
 import { maintenanceRequests, currentUser } from "../data/mockData";
 import { Loader } from "../components/ui/Loader";
-const documents = [
-    {
-        id: "1",
-        title: "Building Bylaws 2025",
-        category: "Legal",
-        uploadedBy: "Building Manager",
-        uploadDate: "2025-01-15",
-        size: "2.4 MB",
-        type: "PDF",
-        status: "public",
-    },
-    {
-        id: "2",
-        title: "Fire Safety Certificate",
-        category: "Certificates",
-        uploadedBy: "Safety Officer",
-        uploadDate: "2025-02-01",
-        size: "1.8 MB",
-        type: "PDF",
-        status: "public",
-    },
-    {
-        id: "3",
-        title: "Monthly Expense Report - February",
-        category: "Financial",
-        uploadedBy: "Treasurer",
-        uploadDate: "2025-03-01",
-        size: "856 KB",
-        type: "XLSX",
-        status: "restricted",
-    },
-    {
-        id: "4",
-        title: "Maintenance Contract 2025",
-        category: "Contracts",
-        uploadedBy: "Committee Secretary",
-        uploadDate: "2025-01-10",
-        size: "3.2 MB",
-        type: "PDF",
-        status: "private",
-    },
-    {
-        id: "5",
-        title: "Resident Directory",
-        category: "General",
-        uploadedBy: "Building Manager",
-        uploadDate: "2025-02-15",
-        size: "1.1 MB",
-        type: "PDF",
-        status: "restricted",
-    },
-];
+// const documents = [
+//     {
+//         id: "1",
+//         title: "Building Bylaws 2025",
+//         category: "Legal",
+//         uploadedBy: "Building Manager",
+//         uploadDate: "2025-01-15",
+//         size: "2.4 MB",
+//         type: "PDF",
+//         status: "public",
+//     },
+//     {
+//         id: "2",
+//         title: "Fire Safety Certificate",
+//         category: "Certificates",
+//         uploadedBy: "Safety Officer",
+//         uploadDate: "2025-02-01",
+//         size: "1.8 MB",
+//         type: "PDF",
+//         status: "public",
+//     },
+//     {
+//         id: "3",
+//         title: "Monthly Expense Report - February",
+//         category: "Financial",
+//         uploadedBy: "Treasurer",
+//         uploadDate: "2025-03-01",
+//         size: "856 KB",
+//         type: "XLSX",
+//         status: "restricted",
+//     },
+//     {
+//         id: "4",
+//         title: "Maintenance Contract 2025",
+//         category: "Contracts",
+//         uploadedBy: "Committee Secretary",
+//         uploadDate: "2025-01-10",
+//         size: "3.2 MB",
+//         type: "PDF",
+//         status: "private",
+//     },
+//     {
+//         id: "5",
+//         title: "Resident Directory",
+//         category: "General",
+//         uploadedBy: "Building Manager",
+//         uploadDate: "2025-02-15",
+//         size: "1.1 MB",
+//         type: "PDF",
+//         status: "restricted",
+//     },
+// ];
 const categories = ["plumbing", "electrical", "hvac", "structural", "appliance", "security", "cleaning", "other"];
 const Documents = () => {
     const [searchTerm, setSearchTerm] = useState("");
@@ -76,11 +76,34 @@ const Documents = () => {
         category: "legal",
         file: null,
     });
+    const [documents, setDocuments] = useState([]);
+
     const [isLoading, setIsLoading] = useState(false);
 
     const categories = ["legal", "financial", "maintenance", "insurance", "certificates", "meeting_minutes"];
 
     const [file, setFile] = useState(null);
+    useEffect(() => {
+        const fetchDocuments = async () => {
+            try {
+                const res = await fetch("http://localhost:3000/api/document", {
+                    method: "GET",
+                    credentials: "include",
+                });
+
+                if (!res.ok) throw new Error("Failed to fetch documents");
+
+                const data = await res.json();
+                setDocuments(data.data); // assuming your backend returns { data: [...] }
+            } catch (err) {
+                console.error("Error fetching documents:", err);
+            }
+        };
+
+        fetchDocuments();
+    }, []);
+    console.log(Documents);
+
     const handleSubmitRequest = async (e) => {
         e.preventDefault(); // Prevent default form submission
 
@@ -105,7 +128,7 @@ const Documents = () => {
         console.log(formData);
         setIsLoading(true);
         try {
-            const res = await fetch("http://localhost:3000/api/upload", {
+            const res = await fetch("http://localhost:3000/api/document", {
                 method: "POST",
                 credentials: "include",
                 body: formData,
@@ -136,7 +159,7 @@ const Documents = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case "public":
+            case "residents":
                 return "success";
             case "private":
                 return "danger";
@@ -193,7 +216,7 @@ const Documents = () => {
                         </div>
                         <div className="ml-4">
                             <p className="text-sm font-medium text-gray-500">Public Documents</p>
-                            <p className="text-xl font-semibold text-gray-900">{documents.filter((doc) => doc.status === "public").length}</p>
+                            <p className="text-xl font-semibold text-gray-900">{documents.filter((doc) => doc.accessLevel === "residents").length}</p>
                         </div>
                     </div>
                 </Card>
@@ -222,7 +245,7 @@ const Documents = () => {
                                     documents.filter((doc) => {
                                         const thirtyDaysAgo = new Date();
                                         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-                                        return new Date(doc.uploadDate) > thirtyDaysAgo;
+                                        return new Date(doc.createdAt) > thirtyDaysAgo;
                                     }).length
                                 }
                             </p>
@@ -268,7 +291,7 @@ const Documents = () => {
             {/* Documents Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredDocuments.map((doc) => (
-                    <Card key={doc.id} className="group hover:shadow-lg transition-all duration-300">
+                    <Card key={doc._id} className="group hover:shadow-lg transition-all duration-300">
                         <div className="flex items-start space-x-4">
                             <div className="p-3 rounded-lg bg-blue-50 text-blue-600">
                                 <FileText size={24} />
@@ -277,26 +300,26 @@ const Documents = () => {
                                 <h3 className="text-lg font-semibold text-gray-900 truncate">{doc.title}</h3>
                                 <div className="flex items-center mt-2 space-x-2">
                                     <Badge variant="secondary">{doc.category}</Badge>
-                                    <Badge variant={getStatusColor(doc.status)}>{doc.status}</Badge>
+                                    <Badge variant={getStatusColor(doc.accessLevel)}>{doc.accessLevel}</Badge>
                                 </div>
                                 <div className="mt-4 text-sm text-gray-500 space-y-2">
                                     <div className="flex items-center justify-between">
                                         <span>Size:</span>
-                                        <span className="font-medium">{doc.size}</span>
+                                        <span className="font-medium">{(doc.fileSize / (1024 * 1024)).toFixed(2)} MB</span>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span>Type:</span>
-                                        <span className="font-medium">{doc.type}</span>
+                                        <span className="font-medium">Pdf</span>
                                     </div>
                                     <div className="flex items-center justify-between">
                                         <span>Uploaded:</span>
-                                        <span className="font-medium">{new Date(doc.uploadDate).toLocaleDateString()}</span>
+                                        <span className="font-medium">{new Date(doc.createdAt).toLocaleDateString()}</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between">
-                            <span className="text-sm text-gray-500">{doc.uploadedBy}</span>
+                            <span className="text-sm text-gray-500">{doc?.uploadedBy?.role}</span>
                             <div className="flex space-x-2">
                                 <Button variant="ghost" size="sm" leftIcon={<Eye size={16} />}>
                                     View
@@ -312,7 +335,7 @@ const Documents = () => {
                 {/* Add New Document Card */}
                 <Card className="flex items-center justify-center h-full border-2 border-dashed border-gray-300 hover:border-blue-500 transition-colors duration-200 cursor-pointer group">
                     <div className="text-center">
-                        <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-100 transition-colors duration-200">
+                        <div onClick={() => setShowNewRequestModal(true)} role="button" tabIndex={0} className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-100 transition-colors duration-200">
                             <Plus size={24} className="text-blue-600" />
                         </div>
                         <h3 className="text-lg font-medium text-gray-900">Upload New Document</h3>
@@ -410,7 +433,7 @@ const Documents = () => {
                         <Button type="button" variant="secondary" onClick={() => setShowNewRequestModal(false)}>
                             Cancel
                         </Button>
-                        <Button type="submit" variant="primary" leftIcon={<Plus size={16} />}>
+                        <Button type="submit" variant="primary" leftIcon={<Plus size={16} disabled={!newRequest.file || isLoading} />}>
                             Submit Request
                         </Button>
                     </div>

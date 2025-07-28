@@ -3,7 +3,7 @@ const { google } = require("googleapis");
 const path = require("path");
 const Upload = require("../helpers/upload");
 const Document = require("../model/Document");
-exports.uploadPdf = async (req, res, next) => {
+exports.documentPostController = async (req, res, next) => {
     try {
         const { title, description, category } = req.body;
 
@@ -46,5 +46,20 @@ exports.uploadPdf = async (req, res, next) => {
     } catch (error) {
         console.error("Upload error:", error);
         return res.status(500).json({ error: "Failed to upload document" });
+    }
+};
+
+exports.documentGetController = async (req, res, next) => {
+    try {
+        const documents = await Document.find().sort({ createdAt: -1 }).populate("uploadedBy", "role");
+
+        return res.status(200).json({
+            success: true,
+            message: "Documents fetched successfully",
+            data: documents,
+        });
+    } catch (error) {
+        console.error("Fetch documents error:", error);
+        return res.status(500).json({ error: "Failed to fetch documents" });
     }
 };
