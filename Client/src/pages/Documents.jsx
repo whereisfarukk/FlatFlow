@@ -12,6 +12,7 @@ import { CloudArrowUpIcon } from "@heroicons/react/24/solid";
 
 import { maintenanceRequests, currentUser } from "../data/mockData";
 import { Loader } from "../components/ui/Loader";
+import { SkeletonCard } from "../components/ui/SkeletonCard";
 // const documents = [
 //     {
 //         id: "1",
@@ -76,6 +77,8 @@ const Documents = () => {
         category: "legal",
         file: null,
     });
+    const [pdfModalOpen, setPdfModalOpen] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState("");
     const [documents, setDocuments] = useState([]);
 
     const [isLoading, setIsLoading] = useState(false);
@@ -85,6 +88,7 @@ const Documents = () => {
     const [file, setFile] = useState(null);
     useEffect(() => {
         const fetchDocuments = async () => {
+            setIsLoading(true);
             try {
                 const res = await fetch("http://localhost:3000/api/document", {
                     method: "GET",
@@ -97,12 +101,13 @@ const Documents = () => {
                 setDocuments(data.data); // assuming your backend returns { data: [...] }
             } catch (err) {
                 console.error("Error fetching documents:", err);
+            } finally {
+                setIsLoading(false);
             }
         };
 
         fetchDocuments();
     }, []);
-    console.log(Documents);
 
     const handleSubmitRequest = async (e) => {
         e.preventDefault(); // Prevent default form submission
@@ -169,7 +174,7 @@ const Documents = () => {
                 return "default";
         }
     };
-
+    // if (isLoading) return <Loader />;
     return (
         <div className="space-y-6">
             {/* Header Section */}
@@ -288,69 +293,80 @@ const Documents = () => {
                 </div>
             </Card>
 
-            {/* Documents Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredDocuments.map((doc) => (
-                    <Card key={doc._id} className="group hover:shadow-lg transition-all duration-300">
-                        <div className="flex items-start space-x-4">
-                            <div className="p-3 rounded-lg bg-blue-50 text-blue-600">
-                                <FileText size={24} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-lg font-semibold text-gray-900 truncate">{doc.title}</h3>
-                                <div className="flex items-center mt-2 space-x-2">
-                                    <Badge variant="secondary">{doc.category}</Badge>
-                                    <Badge variant={getStatusColor(doc.accessLevel)}>{doc.accessLevel}</Badge>
+                {isLoading ? (
+                    // showing 6 skeleton cards while loading
+                    Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={index} />)
+                ) : filteredDocuments.length > 0 ? (
+                    filteredDocuments.map((doc) => (
+                        <Card key={doc._id} className="group hover:shadow-lg transition-all duration-300">
+                            <div className="flex items-start space-x-4">
+                                <div className="p-3 rounded-lg bg-blue-50 text-blue-600">
+                                    <FileText size={24} />
                                 </div>
-                                <div className="mt-4 text-sm text-gray-500 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <span>Size:</span>
-                                        <span className="font-medium">{(doc.fileSize / (1024 * 1024)).toFixed(2)} MB</span>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-lg font-semibold text-gray-900 truncate">{doc.title}</h3>
+                                    <div className="flex items-center mt-2 space-x-2">
+                                        <Badge variant="secondary">{doc.category}</Badge>
+                                        <Badge variant={getStatusColor(doc.accessLevel)}>{doc.accessLevel}</Badge>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Type:</span>
-                                        <span className="font-medium">Pdf</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span>Uploaded:</span>
-                                        <span className="font-medium">{new Date(doc.createdAt).toLocaleDateString()}</span>
+                                    <div className="mt-4 text-sm text-gray-500 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span>Size:</span>
+                                            <span className="font-medium">{(doc.fileSize / (1024 * 1024)).toFixed(2)} MB</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span>Type:</span>
+                                            <span className="font-medium">Pdf</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span>Uploaded:</span>
+                                            <span className="font-medium">{new Date(doc.createdAt).toLocaleDateString()}</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between">
-                            <span className="text-sm text-gray-500">{doc?.uploadedBy?.role}</span>
-                            <div className="flex space-x-2">
-                                <Button variant="ghost" size="sm" leftIcon={<Eye size={16} />}>
-                                    View
-                                </Button>
-                                <Button variant="ghost" size="sm" leftIcon={<Download size={16} />}>
-                                    Download
-                                </Button>
+                            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between">
+                                <span className="text-sm text-gray-500">{doc?.uploadedBy?.role}</span>
+                                <div className="flex space-x-2">
+                                    <Button
+                                        onClick={() => {
+                                            setPdfUrl(doc.fileUrl);
+                                            setPdfModalOpen(true);
+                                        }}
+                                        variant="ghost"
+                                        size="sm"
+                                        leftIcon={<Eye size={16} />}
+                                    >
+                                        View
+                                    </Button>
+                                    <Button variant="ghost" size="sm" leftIcon={<Download size={16} />}>
+                                        Download
+                                    </Button>
+                                </div>
                             </div>
+                        </Card>
+                    ))
+                ) : (
+                    <div className="col-span-full text-center py-12 bg-white rounded-lg shadow-sm">
+                        <FileText size={48} className="mx-auto text-gray-400 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900">No documents found</h3>
+                        <p className="text-gray-500 mt-2">Try adjusting your search criteria</p>
+                    </div>
+                )}
+
+                {!isLoading && (
+                    <Card onClick={() => setShowNewRequestModal(true)} role="button" tabIndex={0} className="flex items-center justify-center h-full border-2 border-dashed border-gray-300 hover:border-blue-500 transition-colors duration-200 cursor-pointer group">
+                        <div className="text-center">
+                            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-100 transition-colors duration-200">
+                                <Plus size={24} className="text-blue-600" />
+                            </div>
+                            <h3 className="text-lg font-medium text-gray-900">Upload New Document</h3>
+                            <p className="mt-1 text-sm text-gray-500">Click to upload or drag and drop</p>
                         </div>
                     </Card>
-                ))}
-
-                {/* Add New Document Card */}
-                <Card className="flex items-center justify-center h-full border-2 border-dashed border-gray-300 hover:border-blue-500 transition-colors duration-200 cursor-pointer group">
-                    <div className="text-center">
-                        <div onClick={() => setShowNewRequestModal(true)} role="button" tabIndex={0} className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-100 transition-colors duration-200">
-                            <Plus size={24} className="text-blue-600" />
-                        </div>
-                        <h3 className="text-lg font-medium text-gray-900">Upload New Document</h3>
-                        <p className="mt-1 text-sm text-gray-500">Click to upload or drag and drop</p>
-                    </div>
-                </Card>
+                )}
             </div>
-
-            {filteredDocuments.length === 0 && (
-                <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-                    <FileText size={48} className="mx-auto text-gray-400 mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900">No documents found</h3>
-                    <p className="text-gray-500 mt-2">Try adjusting your search criteria</p>
-                </div>
-            )}
             <Modal isOpen={showNewRequestModal} onClose={() => setShowNewRequestModal(false)} title="Upload New Document" size="lg">
                 {isLoading && (
                     <div className="absolute inset-0 z-20 bg-white/70 backdrop-blur-sm flex items-center justify-center">
@@ -438,6 +454,17 @@ const Documents = () => {
                         </Button>
                     </div>
                 </form>
+            </Modal>
+            {/* PDF Preview Modal */}
+            <Modal isOpen={pdfModalOpen} onClose={() => setPdfModalOpen(false)} title="Document Preview" size="xl">
+                <div className="flex flex-col h-96">
+                    {pdfUrl ? <iframe src={`${pdfUrl}#toolbar=1&zoom=85`} className="flex-1 w-full" title="PDF Preview" /> : <p className="text-center text-gray-500">Loading PDF...</p>}
+                    <div className="mt-4 text-right">
+                        <Button variant="secondary" onClick={() => setPdfModalOpen(false)}>
+                            Close
+                        </Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );
