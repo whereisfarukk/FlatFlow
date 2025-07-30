@@ -45,19 +45,36 @@ const Finances = () => {
     // Calculate collection rate
     const collectionRate = currentMonthCollection ? (currentMonthCollection.paidApartments / currentMonthCollection.totalApartments) * 100 : 0;
 
-    const handleAddExpense = (e) => {
+    const handleAddExpense = async (e) => {
         e.preventDefault();
 
         // Here you would typically send the data to your backend
-        console.log("New expense added:", {
+        const expense = {
             ...newExpense,
             id: Date.now().toString(),
             month: selectedMonth,
             year: selectedYear,
             date: new Date().toISOString().split("T")[0],
             amount: parseFloat(newExpense.amount),
-        });
+        };
+        try {
+            const res = await fetch("http://localhost:3000/api/finances", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(expense),
+            });
 
+            if (!res.ok) throw new Error("Upload failed");
+
+            const data = await res.json();
+            alert("Uploaded: " + data.message);
+            setShowGenerateBillModal(false);
+        } catch (err) {
+            alert(err);
+        }
         // Reset form and close modal
         setNewExpense({
             category: "",
