@@ -5,8 +5,12 @@ import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import Modal from "../components/ui/Modal";
 // import { bills, currentUser } from "../data/mockData";
-import { bills, currentUser, apartments } from "../data/mockdata2";
+import { currentUser, apartments } from "../data/mockdata2";
+import { useEffect } from "react";
+import { Loader } from "../components/ui/Loader";
 const Bills = () => {
+    const [bills, setBills] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedMonth, setSelectedMonth] = useState("all");
     const [selectedStatus, setSelectedStatus] = useState("all");
@@ -23,7 +27,7 @@ const Bills = () => {
         maintenanceFee: "2500",
         otherCharges: "",
     });
-    const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    const dueDate = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const filteredBills = bills.filter((bill) => {
         const matchesSearch = bill.apartmentNumber.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesMonth = selectedMonth === "all" || bill.month.toLowerCase() === selectedMonth.toLowerCase();
@@ -102,11 +106,33 @@ const Bills = () => {
         });
         setShowGenerateBillModal(false);
     };
-    // const openGenerateBillModal = () => {
-    //     setShowGenerateBillModal(true);
-    //     setBillGenerationType("specific");
-    //     setSelectedApartments([]);
-    // };
+    const openGenerateBillModal = () => {
+        setShowGenerateBillModal(true);
+        setBillGenerationType("specific");
+        setSelectedApartments([]);
+    };
+    useEffect(() => {
+        const fetchBills = async () => {
+            setIsLoading(true);
+            try {
+                const res = await fetch("http://localhost:3000/api/bills", {
+                    credentials: "include",
+                });
+
+                if (!res.ok) throw new Error("Failed to fetch bills");
+
+                const data = await res.json();
+                setBills(data.data); // assuming your backend returns { data: [...] }
+            } catch (err) {
+                setError(err.message);
+                console.error(err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchBills();
+    }, []);
 
     return (
         <div className="space-y-6">
@@ -226,22 +252,33 @@ const Bills = () => {
                                             </th>
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {filteredBills.map((bill) => (
-                                            <tr key={bill.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{bill.apartmentNumber}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    {bill.month} {bill.year}
+                                    {!isLoading && (
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {filteredBills.map((bill) => (
+                                                <tr key={bill.id} className="hover:bg-gray-50">
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{bill.apartmentNumber}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                        {bill.month} {bill.year}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${bill.amount.toFixed(2)}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(bill.dueDate).toLocaleDateString()}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <Badge variant={bill.isPaid ? "success" : "danger"}>{bill.isPaid ? "Paid" : "Unpaid"}</Badge>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{bill.paidDate ? new Date(bill.paidDate).toLocaleDateString() : "-"}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    )}
+                                    {isLoading && (
+                                        <tbody>
+                                            <tr>
+                                                <td colSpan="6" className="py-8 text-center">
+                                                    <Loader />
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${bill.amount.toFixed(2)}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(bill.dueDate).toLocaleDateString()}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <Badge variant={bill.isPaid ? "success" : "danger"}>{bill.isPaid ? "Paid" : "Unpaid"}</Badge>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{bill.paidDate ? new Date(bill.paidDate).toLocaleDateString() : "-"}</td>
                                             </tr>
-                                        ))}
-                                    </tbody>
+                                        </tbody>
+                                    )}
                                 </table>
                             </div>
                         </div>

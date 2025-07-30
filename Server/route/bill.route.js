@@ -1,5 +1,5 @@
 const router = require("express").Router();
-const { billPostController } = require("../controllers/bill.controller");
+const { billPostController, getAllBills } = require("../controllers/bill.controller");
 // ```
 // GET    /api/maintenance             # Get maintenance requests (filtered by user role)
 // GET    /api/maintenance/:id         # Get maintenance request by ID
@@ -9,5 +9,6 @@ const { billPostController } = require("../controllers/bill.controller");
 // ```;
 
 router.post("/", billPostController);
+router.get("/", getAllBills);
 
 module.exports = router;
