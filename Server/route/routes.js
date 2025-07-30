@@ -3,6 +3,7 @@ const authRoute = require("./auth.route");
 const maintenanceRoute = require("./maintenance.route");
 const announcementRoute = require("./announcement.route");
 const uploadPdfRoute = require("./document.route");
+const billRoute = require("./bill.route");
 const route = [
     {
         path: "/auth",
@@ -20,10 +21,10 @@ const route = [
         path: "/api/document",
         handler: uploadPdfRoute,
     },
-    // {
-    //     path: "/uploads",
-    //     handler: uploadRoutes,
-    // },
+    {
+        path: "/api/bills",
+        handler: billRoute,
+    },
     // {
     //     path: "/",
     //     handler: (req, res) => {

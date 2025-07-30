@@ -1,18 +1,21 @@
 import React, { useState } from "react";
-import { Calendar, DollarSign, Filter, Search, Plus, Zap, Home, Calculator } from "lucide-react";
+import { Calendar, DollarSign, Filter, Search, Plus, Zap, Calculator, Home, Building2, Check } from "lucide-react";
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import Modal from "../components/ui/Modal";
-import { bills, currentUser } from "../data/mockData";
-
+// import { bills, currentUser } from "../data/mockData";
+import { bills, currentUser, apartments } from "../data/mockdata2";
 const Bills = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedMonth, setSelectedMonth] = useState("all");
     const [selectedStatus, setSelectedStatus] = useState("all");
     const [showGenerateBillModal, setShowGenerateBillModal] = useState(false);
+    const [selected, setSelected] = useState("all");
+    const [billGenerationType, setBillGenerationType] = useState("all");
+    const [selectedApartments, setSelectedApartments] = useState([]);
     const [newBill, setNewBill] = useState({
-        apartmentNumber: "",
+        apartmentNumber: [],
         month: "",
         year: new Date().getFullYear(),
         electricityUnits: "",
@@ -20,7 +23,7 @@ const Bills = () => {
         maintenanceFee: "2500",
         otherCharges: "",
     });
-
+    const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
     const filteredBills = bills.filter((bill) => {
         const matchesSearch = bill.apartmentNumber.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesMonth = selectedMonth === "all" || bill.month.toLowerCase() === selectedMonth.toLowerCase();
@@ -39,23 +42,57 @@ const Bills = () => {
         const other = parseFloat(newBill.otherCharges) || 0;
         return electricity + water + maintenance + other;
     };
-
-    const handleGenerateBill = (e) => {
+    const handleSelectAllApartments = () => {
+        if (selectedApartments.length === apartments.length) {
+            setSelectedApartments([]);
+        } else {
+            setSelectedApartments(apartments.map((apt) => apt.number));
+        }
+    };
+    const handleApartmentSelection = (apartmentNumber) => {
+        setSelectedApartments((prev) => (prev.includes(apartmentNumber) ? prev.filter((apt) => apt !== apartmentNumber) : [...prev, apartmentNumber]));
+    };
+    // console.log(selectedApartments);
+    const handleGenerateBill = async (e) => {
         e.preventDefault();
         const totalAmount = calculateBillAmount();
-
-        // Here you would typically send the data to your backend
-        console.log("New bill generated:", {
+        setNewBill((prev) => ({
+            ...prev,
+            apartmentNumber: selectedApartments,
+        }));
+        const bill = {
             ...newBill,
+            apartmentNumber: selectedApartments,
             totalAmount,
-            dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 30 days from now
             isPaid: false,
-            id: Date.now().toString(),
-        });
+            billNumber: Date.now().toString(),
+        };
+        console.log(bill);
+        // setIsLoading(true);
+        try {
+            const res = await fetch("http://localhost:3000/api/bills", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(bill),
+            });
 
+            if (!res.ok) throw new Error("Upload failed");
+
+            const data = await res.json();
+            alert("Uploaded: " + data.message);
+            setShowGenerateBillModal(false);
+        } catch (err) {
+            console.error(err);
+            alert("Upload failed. Please try again.");
+        } finally {
+            // setIsLoading(false);
+        }
         // Reset form and close modal
         setNewBill({
-            apartmentNumber: "",
+            apartmentNumber: [],
             month: "",
             year: new Date().getFullYear(),
             electricityUnits: "",
@@ -64,9 +101,12 @@ const Bills = () => {
             otherCharges: "",
         });
         setShowGenerateBillModal(false);
-
-        alert("Bill generated successfully!");
     };
+    // const openGenerateBillModal = () => {
+    //     setShowGenerateBillModal(true);
+    //     setBillGenerationType("specific");
+    //     setSelectedApartments([]);
+    // };
 
     return (
         <div className="space-y-6">
@@ -212,37 +252,90 @@ const Bills = () => {
             {/* Generate Bill Modal */}
             <Modal isOpen={showGenerateBillModal} onClose={() => setShowGenerateBillModal(false)} title="Generate New Utility Bill" size="lg">
                 <form onSubmit={handleGenerateBill} className="space-y-6">
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border border-green-200">
+                    <div className="bg-gradient-to-r from-primary/5 to-primary/10 p-4 rounded-lg border border-primary/20">
                         <div className="flex items-center">
-                            <div className="p-2 bg-green-100 rounded-full mr-3">
-                                <Calculator className="w-5 h-5 text-green-600" />
+                            <div className="p-2 bg-primary/10 rounded-full mr-3">
+                                <Calculator className="w-5 h-5 text-primary" />
                             </div>
                             <div>
-                                <h4 className="text-sm font-semibold text-green-900">Bill Generation</h4>
-                                <p className="text-xs text-green-700">Create utility bill for apartment</p>
+                                <h4 className="text-sm font-semibold text-foreground">Bill Generation</h4>
+                                <p className="text-xs text-muted-foreground">Create utility bills for apartments</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Apartment Number *</label>
-                            <div className="relative">
-                                <Home className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-                                <input
-                                    type="text"
-                                    required
-                                    value={newBill.apartmentNumber}
-                                    onChange={(e) => setNewBill({ ...newBill, apartmentNumber: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                    placeholder="e.g., 301"
-                                />
+                    {/* Bill Type Selection */}
+                    <div className="space-y-4">
+                        <label className="block text-sm font-semibold text-foreground">Bill Generation Type</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div
+                                className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${billGenerationType === "all" ? "border-[#2461E8] bg-[#2461E8]/5" : "border-border hover:border-[#2461E8]/50"}`}
+                                onClick={() => {
+                                    setBillGenerationType("all");
+                                    setSelectedApartments(apartments.map((apt) => apt.number));
+                                }}
+                            >
+                                <div className="flex items-center space-x-3">
+                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${billGenerationType === "all" ? "border-[#2461E8] bg-[#2461E8]" : "border-border"}`}>{billGenerationType === "all" && <div className="w-2 h-2 bg-white rounded-full" />}</div>
+                                    <Building2 className="w-5 h-5 text-primary" />
+                                    <div>
+                                        <h4 className="font-medium text-foreground">All Apartments</h4>
+                                        <p className="text-xs text-muted-foreground">Generate same bill for all apartments</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${billGenerationType === "specific" ? "border-[#2461E8] bg-[#2461E8]/5" : "border-border hover:border-[#2461E8]/50"}`} onClick={() => setBillGenerationType("specific")}>
+                                <div className="flex items-center space-x-3">
+                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${billGenerationType === "specific" ? "border-[#2461E8] bg-[#2461E8]" : "border-border"}`}>
+                                        {billGenerationType === "specific" && <div className="w-2 h-2 bg-white rounded-full" />}
+                                    </div>
+                                    <Home className="w-5 h-5 text-primary" />
+                                    <div>
+                                        <h4 className="font-medium text-foreground">Specific Apartments</h4>
+                                        <p className="text-xs text-muted-foreground">Select specific apartments</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
+                    {/* Apartment Selection for Specific Type */}
+                    {billGenerationType === "specific" && (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <label className="block text-sm font-semibold text-foreground">Select Apartments</label>
+                                <Button type="button" variant="outline" size="sm" onClick={handleSelectAllApartments}>
+                                    {selectedApartments.length === apartments.length ? "Deselect All" : "Select All"}
+                                </Button>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-48 overflow-y-auto p-4 border border-border rounded-lg bg-muted/30">
+                                {apartments.map((apartment) => (
+                                    <div
+                                        key={apartment.id}
+                                        className={`p-3 border rounded-lg cursor-pointer transition-all ${selectedApartments.includes(apartment.number) ? "border-[#2461E8] bg-[#2461E8]/10" : "border-border hover:border-[#2461E8]/50"}`}
+                                        onClick={() => handleApartmentSelection(apartment.number)}
+                                    >
+                                        <div className="flex items-center space-x-2">
+                                            <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedApartments.includes(apartment.number) ? "border-[#2461E8] bg-[#2461E8]" : "border-border"}`}>
+                                                {selectedApartments.includes(apartment.number) && <Check className="w-3 h-3 text-white" />}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-foreground">#{apartment.number}</p>
+                                                <p className="text-xs text-muted-foreground">{apartment.ownerName}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            {selectedApartments.length > 0 && <p className="text-sm text-muted-foreground">{selectedApartments.length} apartment(s) selected</p>}
+                        </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Month *</label>
-                            <select required value={newBill.month} onChange={(e) => setNewBill({ ...newBill, month: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <label className="block text-sm font-semibold text-foreground mb-2">Month *</label>
+                            <select required value={newBill.month} onChange={(e) => setNewBill({ ...newBill, month: e.target.value })} className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground">
                                 <option value="">Select Month</option>
                                 <option value="January">January</option>
                                 <option value="February">February</option>
@@ -258,71 +351,92 @@ const Bills = () => {
                                 <option value="December">December</option>
                             </select>
                         </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-foreground mb-2">Year</label>
+                            <input
+                                type="number"
+                                value={newBill.year}
+                                onChange={(e) => setNewBill({ ...newBill, year: parseInt(e.target.value) })}
+                                className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
+                                placeholder="2024"
+                            />
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Electricity Units (kWh)</label>
+                            <label className="block text-sm font-semibold text-foreground mb-2">Electricity Units (kWh)</label>
                             <div className="relative">
-                                <Zap className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                                <Zap className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                                 <input
                                     type="number"
                                     step="0.01"
                                     value={newBill.electricityUnits}
                                     onChange={(e) => setNewBill({ ...newBill, electricityUnits: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                    className="w-full pl-10 pr-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                                     placeholder="0.00"
                                 />
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">Rate: $0.12 per kWh</p>
+                            <p className="text-xs text-muted-foreground mt-1">Rate: $0.12 per kWh</p>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Water Usage (Liters)</label>
-                            <input type="number" step="0.01" value={newBill.waterUsage} onChange={(e) => setNewBill({ ...newBill, waterUsage: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00" />
-                            <p className="text-xs text-gray-500 mt-1">Rate: $0.05 per liter</p>
+                            <label className="block text-sm font-semibold text-foreground mb-2">Water Usage (Liters)</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={newBill.waterUsage}
+                                onChange={(e) => setNewBill({ ...newBill, waterUsage: e.target.value })}
+                                className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
+                                placeholder="0.00"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">Rate: $0.05 per liter</p>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Maintenance Fee</label>
+                            <label className="block text-sm font-semibold text-foreground mb-2">Maintenance Fee</label>
                             <input
                                 type="number"
                                 step="0.01"
                                 value={newBill.maintenanceFee}
                                 onChange={(e) => setNewBill({ ...newBill, maintenanceFee: e.target.value })}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                                 placeholder="2500.00"
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Other Charges</label>
+                            <label className="block text-sm font-semibold text-foreground mb-2">Other Charges</label>
                             <input
                                 type="number"
                                 step="0.01"
                                 value={newBill.otherCharges}
                                 onChange={(e) => setNewBill({ ...newBill, otherCharges: e.target.value })}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-ring bg-background text-foreground"
                                 placeholder="0.00"
                             />
                         </div>
                     </div>
 
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
                         <div className="flex justify-between items-center">
-                            <span className="text-sm font-semibold text-blue-900">Total Bill Amount:</span>
-                            <span className="text-xl font-bold text-blue-900">${calculateBillAmount().toFixed(2)}</span>
+                            <span className="text-sm font-semibold text-foreground">Total Bill Amount:</span>
+                            <span className="text-xl font-bold text-primary">${calculateBillAmount().toFixed(2)}</span>
                         </div>
+                        {billGenerationType === "all" && <p className="text-xs text-muted-foreground mt-1">This amount will be applied to all {apartments.length} apartments</p>}
+                        {billGenerationType === "specific" && selectedApartments.length > 0 && <p className="text-xs text-muted-foreground mt-1">This amount will be applied to {selectedApartments.length} selected apartment(s)</p>}
                     </div>
 
-                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-border">
                         <Button type="button" variant="secondary" onClick={() => setShowGenerateBillModal(false)}>
                             Cancel
                         </Button>
-                        <Button type="submit" variant="primary" leftIcon={<Plus size={16} />}>
-                            Generate Bill
+                        <Button type="submit" variant="primary">
+                            <Plus size={16} className="mr-2" />
+                            Generate Bill{billGenerationType === "all" ? "s" : selectedApartments.length > 1 ? "s" : ""}
                         </Button>
                     </div>
                 </form>
