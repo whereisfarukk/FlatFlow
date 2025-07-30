@@ -1,21 +1,28 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BarChart3, Building2, FileText, Home, MessageSquare, Settings, PenTool as Tool, Users, X, Zap } from "lucide-react";
+import { useUser } from "../../context/UserContext";
 
 const Sidebar = ({ isOpen, closeSidebar }) => {
     const location = useLocation();
     const navigate = useNavigate();
-    const menuItems = [
-        { name: "Dashboard", icon: <Home size={20} />, path: "/" },
-        { name: "Announcements", icon: <MessageSquare size={20} />, path: "/announcements" },
-        { name: "Financial Reports", icon: <BarChart3 size={20} />, path: "/finances" },
-        { name: "Utility Bills", icon: <Zap size={20} />, path: "/bills" },
-        { name: "Maintenance", icon: <Tool size={20} />, path: "/maintenance" },
-        { name: "Committee", icon: <Users size={20} />, path: "/committee" },
-        { name: "Building Info", icon: <Building2 size={20} />, path: "/building" },
-        { name: "Documents", icon: <FileText size={20} />, path: "/documents" },
-        { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
-    ];
+    const { user, loading, fetchUser } = useUser();
+    const isAdmin = user?.role === "admin";
+    console.log(user?.role);
+
+    const menuItems = loading
+        ? []
+        : [
+              { name: "Dashboard", icon: <Home size={20} />, path: "/" },
+              { name: "Announcements", icon: <MessageSquare size={20} />, path: "/announcements" },
+              { name: "Financial Reports", icon: <BarChart3 size={20} />, path: "/finances" },
+              ...(isAdmin ? [{ name: "Utility Bills", icon: <Zap size={20} />, path: "/bills" }] : []),
+              { name: "Maintenance", icon: <Tool size={20} />, path: "/maintenance" },
+              { name: "Committee", icon: <Users size={20} />, path: "/committee" },
+              { name: "Building Info", icon: <Building2 size={20} />, path: "/building" },
+              { name: "Documents", icon: <FileText size={20} />, path: "/documents" },
+              { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
+          ];
 
     const isActive = (path) => {
         return location.pathname === path;
@@ -29,7 +36,7 @@ const Sidebar = ({ isOpen, closeSidebar }) => {
 
             if (res.ok) {
                 localStorage.removeItem("isAuthenticated");
-
+                await fetchUser();
                 navigate("/login");
             } else {
                 const data = await res.json();

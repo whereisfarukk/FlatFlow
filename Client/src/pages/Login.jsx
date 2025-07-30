@@ -5,10 +5,13 @@ import { motion } from "motion/react";
 
 import Button from "../components/ui/Button";
 import Shape from "../assets/shapes.svg";
+import { useUser } from "../context/UserContext";
+
 // import { useAuth } from "../contexts/AuthContext";
 
 const Login = () => {
     const navigate = useNavigate();
+    const { fetchUser } = useUser();
     // const { login } = useAuth();
     const [formData, setFormData] = useState({
         apartmentname: "",
@@ -41,6 +44,7 @@ const Login = () => {
             const data = await res.json();
             console.log(data);
             localStorage.setItem("isAuthenticated", "true");
+            await fetchUser();
             navigate("/dashboard");
 
             // setError("");

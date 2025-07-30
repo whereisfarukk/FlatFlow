@@ -1,5 +1,7 @@
 const router = require("express").Router();
 const { maintenancePostController } = require("../controllers/maintenanceController"); // ### Maintenance CRUD
+// importing middlewares
+const { isAuthenticated } = require("../middleware/auth.middleware");
 // ```
 // GET    /api/maintenance             # Get maintenance requests (filtered by user role)
 // GET    /api/maintenance/:id         # Get maintenance request by ID
@@ -8,6 +10,6 @@ const { maintenancePostController } = require("../controllers/maintenanceControl
 // DELETE /api/maintenance/:id         # Delete maintenance request
 // ```;
 
-router.post("/", maintenancePostController);
+router.post("/", isAuthenticated, maintenancePostController);
 
 module.exports = router;

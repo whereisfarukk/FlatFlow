@@ -1,4 +1,7 @@
 const router = require("express").Router();
 const { financialRecordPostController } = require("../controllers/financialReport.controller");
-router.post("/", financialRecordPostController);
+// importing middlewares
+const { isAuthenticated } = require("../middleware/auth.middleware");
+
+router.post("/", isAuthenticated, financialRecordPostController);
 module.exports = router;
