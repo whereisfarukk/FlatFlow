@@ -11,7 +11,7 @@ exports.isAuthenticated = (req, res, next) => {
     }
 };
 exports.isAdmin = (req, res, next) => {
-    console.log(req.user);
+    // console.log(req.user);
     // console.log("user object", req.user.isLoggedIn);
     if (req.user.role === roles.admin) {
         next();

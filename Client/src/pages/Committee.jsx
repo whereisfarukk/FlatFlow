@@ -1,13 +1,33 @@
 import React, { useState } from "react";
-import { Calendar, Mail, Phone, Search, Users, Shield, Star, Award } from "lucide-react";
+import { Calendar, Mail, Phone, Search, Users, Shield, Star, Plus, Award, Wrench, ChevronDown } from "lucide-react";
+import { Fragment } from "react";
+
 import Card from "../components/ui/Card";
 import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
+import Modal from "../components/ui/Modal";
+
 import { committeeMembers } from "../data/mockData";
+import { Listbox } from "@headlessui/react";
+import { maintenanceRequests, currentUser } from "../data/mockData";
+import { useUser } from "../context/UserContext";
 
 const Committee = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedRole, setSelectedRole] = useState("all");
+    const [showNewRequestModal, setShowNewRequestModal] = useState(false);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [selectedRequest, setSelectedRequest] = useState(null);
+    const [newRequest, setNewRequest] = useState({
+        title: "",
+        description: "",
+        priority: "medium",
+        location: "",
+        category: "plumbing",
+        date: "",
+    });
+
+    const categories = ["plumbing", "electrical", "hvac", "structural", "appliance", "security", "cleaning", "other"];
 
     const roles = Array.from(new Set(committeeMembers.map((member) => member.role)));
 
@@ -36,6 +56,92 @@ const Committee = () => {
                 return <Award className="w-5 h-5 text-purple-500" />;
         }
     };
+    const getStatusColor = (status) => {
+        switch (status) {
+            case "pending":
+                return "warning";
+            case "in-progress":
+                return "info";
+            case "resolved":
+                return "success";
+            default:
+                return "secondary";
+        }
+    };
+
+    const getPriorityColor = (priority) => {
+        switch (priority) {
+            case "high":
+                return "danger";
+            case "medium":
+                return "warning";
+            case "low":
+                return "info";
+            default:
+                return "secondary";
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case "pending":
+                return <Clock size={16} />;
+            case "in-progress":
+                return <Tool size={16} />;
+            case "resolved":
+                return <CheckCircle size={16} />;
+            default:
+                return <AlertTriangle size={16} />;
+        }
+    };
+
+    const getCategoryIcon = (category) => {
+        switch (category) {
+            case "plumbing":
+                return "🔧";
+            case "electrical":
+                return "⚡";
+            case "hvac":
+                return "❄️";
+            case "structural":
+                return "🏗️";
+            case "appliance":
+                return "📱";
+            case "security":
+                return "🔒";
+            case "cleaning":
+                return "🧹";
+            default:
+                return "🔨";
+        }
+    };
+    const { user, loading, fetchUser } = useUser();
+    const isAdmin = user?.role === "admin";
+
+    const handleSubmitRequest = async (e) => {
+        e.preventDefault();
+        // console.log(newRequest);
+        try {
+            const res = await fetch("http://localhost:3000/api/committee", {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(newRequest),
+            });
+
+            if (!res.ok) throw new Error("Upload failed");
+
+            const data = await res.json();
+            alert("Uploaded: " + data.message);
+            setShowNewRequestModal(false);
+            setNewRequest({ title: "", description: "", priority: "medium", location: "", category: "plumbing", date: "" });
+        } catch (err) {
+            console.error(err);
+            alert("Upload failed. Please try again.");
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -46,11 +152,13 @@ const Committee = () => {
                             <h1 className="text-3xl font-bold">Building Committee</h1>
                             <p className="mt-2 text-blue-100">Meet our dedicated team managing Khondokar Tower</p>
                         </div>
-                        <div className="mt-4 sm:mt-0">
-                            <Button variant="secondary" leftIcon={<Users size={16} />} className="bg-white text-blue-800 hover:bg-blue-50">
-                                Schedule Meeting
-                            </Button>
-                        </div>
+                        {isAdmin && (
+                            <div className="mt-4 sm:mt-0">
+                                <Button onClick={() => setShowNewRequestModal(true)} variant="secondary" leftIcon={<Users size={16} />} className="bg-white text-blue-800 hover:bg-blue-50">
+                                    Schedule Meeting
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -145,6 +253,107 @@ const Committee = () => {
                     </Card>
                 ))}
             </div>
+            {/* New Request Modal */}
+            <Modal isOpen={showNewRequestModal} onClose={() => setShowNewRequestModal(false)} title="Schedule Committee Meeting" size="lg">
+                <form onSubmit={handleSubmitRequest} className="space-y-6">
+                    {/* Row 1: Meeting Title and Meeting Type */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Meeting Title *</label>
+                            <input
+                                type="text"
+                                required
+                                value={newRequest.title}
+                                onChange={(e) => setNewRequest({ ...newRequest, title: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                placeholder="e.g., Monthly Committee Meeting"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Meeting Type *</label>
+                            <select required value={newRequest.meetingType} onChange={(e) => setNewRequest({ ...newRequest, meetingType: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white">
+                                <option value="">Select Type</option>
+                                <option value="general_body">General Body Meeting</option>
+                                <option value="committee">Committee Meeting</option>
+                                <option value="emergency">Emergency Meeting</option>
+                                <option value="social">Social Event</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Date, Time, Duration */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Date *</label>
+                            <input type="date" required value={newRequest.date} onChange={(e) => setNewRequest({ ...newRequest, date: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Time *</label>
+                            <input type="time" required value={newRequest.time} onChange={(e) => setNewRequest({ ...newRequest, time: e.target.value })} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500" />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Duration (mins) *</label>
+                            <input
+                                type="number"
+                                required
+                                min="15"
+                                step="15"
+                                value={newRequest.duration}
+                                onChange={(e) => setNewRequest({ ...newRequest, duration: e.target.value })}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                                placeholder="e.g., 60"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Row 3: Location */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Location *</label>
+                        <input
+                            type="text"
+                            required
+                            value={newRequest.location}
+                            onChange={(e) => setNewRequest({ ...newRequest, location: e.target.value })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                            placeholder="e.g., Community Hall, Room 101"
+                        />
+                    </div>
+
+                    {/* Row 4: Meeting Agenda */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Meeting Agenda *</label>
+                        <textarea
+                            required
+                            rows={5}
+                            value={newRequest.description}
+                            onChange={(e) => setNewRequest({ ...newRequest, description: e.target.value })}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+                            placeholder="List key agenda items: 1. Maintenance report 2. Budget review 3. Resident concerns..."
+                        />
+                    </div>
+                    <div className="bg-[#f1f5f980]/50 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                            <Users className="w-5 h-5 text-primary mt-0.5" />
+                            <div>
+                                <h4 className="font-medium text-sm">Meeting Notifications</h4>
+                                <p className="text-sm text-[#64748b] mt-1">All committee members and residents will be notified via email and SMS 24 hours before the meeting.</p>
+                            </div>
+                        </div>
+                    </div>
+                    {/* Submit & Cancel Buttons */}
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                        <Button type="button" variant="secondary" onClick={() => setShowNewRequestModal(false)}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" variant="primary" leftIcon={<Plus size={16} />}>
+                            Schedule Meeting
+                        </Button>
+                    </div>
+                </form>
+            </Modal>
 
             {filteredMembers.length === 0 && (
                 <div className="text-center py-12 bg-white rounded-lg shadow-sm">
