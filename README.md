@@ -1,19 +1,128 @@
-# Book Management Application
+# (flatflow) Building Management System Documentation
 
 ---
 
 ## 🧰 Features
 
-- 📚 Add, update, and delete books
-- 🔍 Search books by title or author
-- 🎛️ Sort books by publish date, title, or author
-- 🏷️ Filter books by category or genre
-- 🔐 User authentication with **Firebase Authentication** (Email/Password, Google Sign-In)
-- 📄 Detailed view for each book
-- 🖥️ Responsive design for mobile and desktop
-- ⚛️ Built with React for fast, interactive UI
-- 🗺️ React Router for smooth navigation
-- 🌐 RESTful API integration with backend
+## Overview
+
+This web application is a comprehensive Building Management System designed for residential complexes, featuring role-based access control and multiple modules for efficient building administration.
+
+## Authentication & Access Control
+
+- **Secure Login System**: Protected authentication with role-based access
+- **Private Routes**: All main features require authentication
+- **Role-Based Permissions**: Different user roles have varying levels of access to features
+
+## Core Features
+
+### 🏠 **Dashboard** (`/dashboard`)
+
+Central hub providing overview of:
+
+- Building statistics and key metrics
+- Recent activities and notifications
+- Quick access to important functions
+- Summary cards for finances, maintenance, and announcements
+
+### 💰 **Financial Management** (`/finances`)
+
+Complete financial oversight including:
+
+- Building revenue and expense tracking
+- Monthly/yearly financial reports
+- Budget planning and allocation
+- Payment history and analytics
+
+### 🧾 **Bills Management** (`/bills`)
+
+Comprehensive billing system for:
+
+- Monthly maintenance fee collection
+- Utility bill distribution
+- Payment tracking and reminders
+- Invoice generation and management
+
+### 🔧 **Maintenance** (`/maintenance`)
+
+Maintenance request and management system:
+
+- Submit and track maintenance requests
+- Schedule routine building maintenance
+- Vendor coordination and management
+- Emergency repair tracking
+
+### 📢 **Announcements** (`/announcements`)
+
+Communication platform for:
+
+- Building-wide notifications
+- Important updates and news
+- Event announcements
+- Emergency communications
+
+### 👥 **Committee Management** (`/committee`)
+
+Committee administration featuring:
+
+- Committee member profiles and contact information
+- Role-based responsibilities
+- Meeting scheduling and management
+- Committee communication tools
+
+### 🏢 **Building Information** (`/building`)
+
+Building data management:
+
+- Property details and specifications
+- Resident directory and apartment information
+- Building rules and regulations
+- Facility information and amenities
+
+### 📄 **Document Management** (`/documents`)
+
+Centralized document repository:
+
+- Important building documents storage
+- Meeting minutes and records
+- Legal documents and contracts
+- Document sharing and access control
+
+### ⚙️ **Settings** (`/settings`)
+
+System configuration options:
+
+- User preferences and notifications
+- Building-specific settings
+- System administration tools
+- Access control management
+
+### 👤 **Profile Management** (`/profile`)
+
+Personal account management:
+
+- User profile information
+- Contact details and preferences
+- Password and security settings
+- Personal notification preferences
+
+## User Roles & Permissions
+
+The system supports different user roles with varying access levels:
+
+- **Admin/President**: Full system access and management capabilities
+- **Committee Members**: Access to relevant committee functions and resident data
+- **Residents**: Limited access to personal information, bills, and announcements
+- **Maintenance Staff**: Access to maintenance requests and building information
+
+## Technical Features
+
+- **Responsive Design**: Optimized for desktop and mobile devices
+- **Real-time Updates**: Live notifications and data synchronization
+- **Secure Authentication**: Protected routes with session management
+- **Modern UI**: Clean, intuitive interface built with React and Tailwind CSS
+
+This system provides a complete solution for modern building management, streamlining communication, financial management, and administrative tasks for residential complexes.
 
 ---
 
@@ -542,3 +651,14 @@ Schedule and manage committee meetings.
 
 - Ensures only users with role: "admin" can access.
 - Returns 401 if user is not an admin.
+
+### 📂 Project Structure (Key Folders)
+
+```
+/controllers/     - Business logic
+/middleware/      - Auth guards
+/model/           - Mongoose schemas
+/route/           - Route definitions
+/utils/           - Helpers (Passport, roles)
+/uploads/         - Temp file storage (used by multer)
+```
